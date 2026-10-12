@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>美味薄餅學分數</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&amp;family=Nunito:wght@400;700&amp;family=Noto+Sans+TC:wght@400;700&amp;display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F3FF;
+    --fg: #3A2340;
+    --muted: #5B4A6B;
+    --surface: #FFFFFF;
+    --border: #E7E1EE;
+    --accent: #6B3FA0;
+    --accent-fg: #FFFFFF;
+    --ok: #1F7A45;
+    --warn: #C2185B;
+    --palette: #FFD6E0, #C3F0CA, #B8E1FF, #FFE9A8;
+    --radius: 30px;
+    --shadow: 0 12px 0 -4px rgba(58,35,64,.10),0 18px 28px rgba(58,35,64,.14),inset 0 -4px 0 rgba(58,35,64,.06);
+    --font-display: 'Fredoka','Noto Sans TC',sans-serif;
+    --font-body: 'Nunito','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+    
+    /* Custom Pizza Colors */
+    --crust: #ECA055;
+    --cheese: #FFD54F;
+    --tomato: #E53935;
+    --mushroom-cap: #A1887F;
+    --mushroom-stem: #D7CCC8;
+    --wood-light: #D7CCC8;
+    --wood-dark: #8D6E63;
+    --num-color: #E65100; /* Orange for numerator */
+    --den-color: #1976D2; /* Blue for denominator */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+  
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  
+  #stage { margin: 0 calc(var(--gap) * 1.5); position: relative; min-height: 0; overflow: hidden; background: var(--surface); display: flex; align-items: center; justify-content: flex-start; }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  
+  #controls { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; margin: var(--gap) calc(var(--gap) * 1.5); padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+  .btn:active { transform: scale(0.96); }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  
+  /* SVG & Board Layout */
+  #game-svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0px 10px 15px rgba(58,35,64,0.1)); }
+  .slice { cursor: pointer; transition: filter 0.2s; }
+  .slice:hover { filter: brightness(1.05); }
+  
+  #scoreboard {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 280px;
+    background: #ffffff;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+  }
+  
+  .score-title { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--fg); }
+  .math-label { font-size: 18px; font-weight: 700; background: #f0f0f0; padding: 4px 12px; border-radius: 20px; }
+  .math-label.num { color: var(--num-color); background: #FFF3E0; margin-bottom: -10px; }
+  .math-label.den { color: var(--den-color); background: #E3F2FD; margin-top: -10px; }
+  
+  #katex-div { font-size: 64px; }
+  #text-div { font-size: 32px; font-weight: 700; font-family: var(--font-display); margin-top: 10px; }
+  
+  .control-group { display: flex; align-items: center; gap: 12px; border-right: 2px solid var(--border); padding-right: 24px; }
+  .btn-row { display: flex; gap: 8px; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>美味薄餅學分數</h1>
+      <p class="goal">明白分數的分母代表等分的總件數，分子代表取出的件數。</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="header-fullscreen" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  
+  <main id="stage" class="card" aria-label="演示畫面">
+    <svg id="game-svg" viewBox="0 0 1100 600" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <!-- Claymorphism shadows -->
+        <filter id="shadow-tray" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="12" stdDeviation="8" flood-color="#3A2340" flood-opacity="0.15"/>
+        </filter>
+        <filter id="shadow-slice" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#3A2340" flood-opacity="0.2"/>
+        </filter>
+      </defs>
+      
+      <!-- Side Plate (Right) -->
+      <g id="side-plate" transform="translate(800, 300)" filter="url(#shadow-tray)">
+        <circle r="180" fill="var(--wood-light)" />
+        <circle r="160" fill="#E8DDD6" />
+        <circle r="140" fill="none" stroke="var(--wood-dark)" stroke-width="2" stroke-dasharray="10 10" opacity="0.3"/>
+      </g>
+      
+      <!-- Main Plate (Left) -->
+      <g id="main-plate" transform="translate(320, 300)" filter="url(#shadow-tray)">
+        <circle r="230" fill="var(--wood-dark)" />
+        <circle r="215" fill="var(--wood-light)" />
+      </g>
+      
+      <!-- Pizza Container (Handles jelly bounce) -->
+      <g id="pizza-container" transform="translate(320, 300)">
+        <g id="traces"></g>
+        <g id="slices" filter="url(#shadow-slice)"></g>
+      </g>
+    </svg>
+
+    <!-- Scoreboard -->
+    <div id="scoreboard" class="card">
+      <div class="score-title">分數看板</div>
+      <div class="math-label num" id="lbl-num">吃了件數 (分子)</div>
+      <div id="katex-div"></div>
+      <div class="math-label den" id="lbl-den">等分總數 (分母)</div>
+      <div id="text-div"></div>
+    </div>
+  </main>
+  
+  <div id="controls" class="card" aria-label="控制面板">
+    <div class="control-group">
+      <label style="font-weight: 700;">切開件數（分母）：</label>
+      <div class="btn-row">
+        <button class="btn denom-btn active" data-val="2">2 件</button>
+        <button class="btn denom-btn" data-val="3">3 件</button>
+        <button class="btn denom-btn" data-val="4">4 件</button>
+        <button class="btn denom-btn" data-val="6">6 件</button>
+        <button class="btn denom-btn" data-val="8">8 件</button>
+      </div>
+    </div>
+    <button class="btn primary" id="btn-replate">↺ 重新整過一個薄餅</button>
+  </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    gsap.registerPlugin(Draggable, MotionPathPlugin);
+
+    // Settings
+    const PIZZA_RADIUS = 200;
+    const CHEESE_RADIUS = 180;
+    
+    // State
+    let totalPieces = 2;
+    let eatenPieces = 0;
+    let sliceData = [];
+
+    // DOM Elements
+    const slicesGroup = document.getElementById('slices');
+    const tracesGroup = document.getElementById('traces');
+    const pizzaContainer = document.getElementById('pizza-container');
+    const katexDiv = document.getElementById('katex-div');
+    const textDiv = document.getElementById('text-div');
+    const denomBtns = document.querySelectorAll('.denom-btn');
+    const replateBtn = document.getElementById('btn-replate');
+
+    // Chinese Numbers
+    const zhNums = ['零', '一', '二', '三', '四', '五', '六', '七', '八'];
+
+    // Math Utils
+    function polarToCartesian(r, degrees) {
+        const radians = (degrees - 90) * Math.PI / 180.0;
+        return {
+            x: r * Math.cos(radians),
+            y: r * Math.sin(radians)
+        };
+    }
+
+    function createSectorPath(r, startAngle, endAngle) {
+        if (endAngle - startAngle >= 359.9) {
+            return `M 0 -${r} A ${r} ${r} 0 1 1 0 ${r} A ${r} ${r} 0 1 1 0 -${r} Z`;
+        }
+        const start = polarToCartesian(r, startAngle);
+        const end = polarToCartesian(r, endAngle);
+        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+        return `M 0 0 L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`;
+    }
+
+    // Rendering
+    function renderPizza(pieces, isInitial = false) {
+        totalPieces = pieces;
+        eatenPieces = 0;
+        sliceData = [];
+        
+        slicesGroup.innerHTML = '';
+        tracesGroup.innerHTML = '';
+
+        const angleStep = 360 / pieces;
+
+        for (let i = 0; i < pieces; i++) {
+            const startAngle = i * angleStep;
+            const endAngle = (i + 1) * angleStep;
+            const midAngle = startAngle + (angleStep / 2);
+
+            // 1. Trace (dashed line left behind)
+            const tracePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            tracePath.setAttribute("d", createSectorPath(PIZZA_RADIUS, startAngle, endAngle));
+            tracePath.setAttribute("fill", "rgba(255,255,255,0.1)");
+            tracePath.setAttribute("stroke", "rgba(255,255,255,0.6)");
+            tracePath.setAttribute("stroke-width", "4");
+            tracePath.setAttribute("stroke-dasharray", "8 8");
+            tracesGroup.appendChild(tracePath);
+
+            // 2. Slice Group
+            const sliceGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            sliceGroup.setAttribute("class", "slice");
+            sliceGroup.dataset.index = i;
+
+            // Crust
+            const crust = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            crust.setAttribute("d", createSectorPath(PIZZA_RADIUS, startAngle, endAngle));
+            crust.setAttribute("fill", "var(--crust)");
+            sliceGroup.appendChild(crust);
+
+            // Cheese
+            const cheese = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            cheese.setAttribute("d", createSectorPath(CHEESE_RADIUS, startAngle, endAngle));
+            cheese.setAttribute("fill", "var(--cheese)");
+            sliceGroup.appendChild(cheese);
+
+            // Toppings (Tomato & Mushroom positioned by math to stay inside slice)
+            const tomatoPos = polarToCartesian(110, midAngle);
+            const tomato = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            tomato.setAttribute("cx", tomatoPos.x);
+            tomato.setAttribute("cy", tomatoPos.y);
+            tomato.setAttribute("r", 16);
+            tomato.setAttribute("fill", "var(--tomato)");
+            sliceGroup.appendChild(tomato);
+
+            const mushroomPos = polarToCartesian(145, midAngle - (angleStep * 0.2));
+            const mushroom = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            mushroom.setAttribute("d", "M-10,0 Q0,-12 10,0 L6,12 L-6,12 Z");
+            mushroom.setAttribute("fill", "var(--mushroom-stem)");
+            mushroom.setAttribute("stroke", "var(--mushroom-cap)");
+            mushroom.setAttribute("stroke-width", "3");
+            mushroom.setAttribute("transform", `translate(${mushroomPos.x}, ${mushroomPos.y}) rotate(${midAngle})`);
+            sliceGroup.appendChild(mushroom);
+
+            if (pieces <= 4) {
+                const tomato2Pos = polarToCartesian(140, midAngle + (angleStep * 0.25));
+                const tomato2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                tomato2.setAttribute("cx", tomato2Pos.x);
+                tomato2.setAttribute("cy", tomato2Pos.y);
+                tomato2.setAttribute("r", 14);
+                tomato2.setAttribute("fill", "var(--tomato)");
+                sliceGroup.appendChild(tomato2);
+            }
+
+            // 3. Cut Lines (Attached to slice so they travel when eaten)
+            if (pieces > 1) {
+                const lineStartPos = polarToCartesian(PIZZA_RADIUS, startAngle);
+                const lineStart = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                lineStart.setAttribute("x1", "0");
+                lineStart.setAttribute("y1", "0");
+                lineStart.setAttribute("x2", "0");
+                lineStart.setAttribute("y2", "0");
+                lineStart.setAttribute("stroke", "#FFF3E0");
+                lineStart.setAttribute("stroke-width", "4");
+                lineStart.setAttribute("stroke-linecap", "round");
+                lineStart.setAttribute("data-tx", lineStartPos.x);
+                lineStart.setAttribute("data-ty", lineStartPos.y);
+                lineStart.classList.add("cut-line");
+                sliceGroup.appendChild(lineStart);
+
+                const lineEndPos = polarToCartesian(PIZZA_RADIUS, endAngle);
+                const lineEnd = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                lineEnd.setAttribute("x1", "0");
+                lineEnd.setAttribute("y1", "0");
+                lineEnd.setAttribute("x2", "0");
+                lineEnd.setAttribute("y2", "0");
+                lineEnd.setAttribute("stroke", "#FFF3E0");
+                lineEnd.setAttribute("stroke-width", "4");
+                lineEnd.setAttribute("stroke-linecap", "round");
+                lineEnd.setAttribute("data-tx", lineEndPos.x);
+                lineEnd.setAttribute("data-ty", lineEndPos.y);
+                lineEnd.classList.add("cut-line");
+                sliceGroup.appendChild(lineEnd);
+            }
+
+            // Slice Interactivity
+            sliceGroup.addEventListener("click", () => eatSlice(i, sliceGroup));
+            slicesGroup.appendChild(sliceGroup);
+
+            // Track state
+            sliceData.push({
+                el: sliceGroup,
+                eaten: false,
+                homeRot: 0
+            });
+        }
+
+        updateScoreboard(false);
+
+        // Motion Spec: Trigger 切換總件數 -> 0.4秒 ease-out 切線由中心放射，薄餅 scale 1.03 彈跳
+        const lines = slicesGroup.querySelectorAll('.cut-line');
+        if (!isInitial) {
+            lines.forEach(line => {
+                gsap.to(line, {
+                    attr: { x2: line.getAttribute('data-tx'), y2: line.getAttribute('data-ty') },
+                    duration: 0.4,
+                    ease: "elastic.out(1, 0.5)"
+                });
+            });
+
+            // Animate pizza jelly bounce
+            gsap.fromTo(pizzaContainer, 
+                { scale: 1.03 }, 
+                { scale: 1.0, duration: 0.4, ease: "elastic.out(1, 0.5)", transformOrigin: "0px 0px" }
+            );
+        } else {
+            // Instant line draw for initial load
+            lines.forEach(line => {
+                line.setAttribute("x2", line.getAttribute('data-tx'));
+                line.setAttribute("y2", line.getAttribute('data-ty'));
+            });
+        }
+    }
+
+    function eatSlice(index, sliceEl) {
+        if (sliceData[index].eaten) return;
+        
+        sliceData[index].eaten = true;
+        eatenPieces++;
+
+        // Calculate Target relative to pizza center
+        const scatterX = 480 + (Math.random() * 60 - 30);
+        const scatterY = (Math.random() * 60 - 30);
+        const scatterRot = (Math.random() * 90 - 45);
+
+        // Motion Spec: 被點擊的切片 -> 0.5秒 power2.out 沿半徑飄浮落入右盤
+        gsap.to(sliceEl, {
+            duration: 0.5,
+            x: scatterX,
+            y: scatterY,
+            rotation: scatterRot,
+            ease: "power2.out",
+            transformOrigin: "0px 0px" 
+        });
+
+        // Small squash on click
+        gsap.fromTo(sliceEl, { scale: 0.95 }, { scale: 1, duration: 0.3, ease: "back.out(2)" });
+
+        updateScoreboard(true);
+    }
+
+    function resetPizza() {
+        eatenPieces = 0;
+        sliceData.forEach(item => {
+            if (item.eaten) {
+                item.eaten = false;
+                gsap.to(item.el, {
+                    duration: 0.5,
+                    x: 0,
+                    y: 0,
+                    rotation: 0,
+                    ease: "back.out(1.5)"
+                });
+            }
+        });
+        updateScoreboard(true);
+    }
+
+    function updateScoreboard(animate) {
+        // KaTeX String: Fixed variables to use direct Hex codes to avoid KaTeX invalid color parse error
+        const tex = `\\frac{\\textcolor{#E65100}{${eatenPieces}}}{\\textcolor{#1976D2}{${totalPieces}}}`;
+        katex.render(tex, katexDiv, { displayMode: true, strict: false });
+
+        // Chinese Text
+        textDiv.innerHTML = `<span style="color:var(--den-color)">${zhNums[totalPieces]}</span> 分之 <span style="color:var(--num-color)">${zhNums[eatenPieces]}</span>`;
+
+        // Motion Spec: KaTeX分數看板 -> 0.35秒 back.out(2) 向上微跳放大1.2倍
+        if (animate) {
+            gsap.fromTo(katexDiv, 
+                { scale: 1, y: 0 }, 
+                { scale: 1.2, y: -15, duration: 0.17, ease: "back.out(2)", 
+                  onComplete: () => {
+                      gsap.to(katexDiv, { scale: 1, y: 0, duration: 0.18, ease: "power1.inOut" });
+                  }
+                }
+            );
+            
+            // Text fade-in sync
+            gsap.fromTo(textDiv, { opacity: 0, y: 5 }, { opacity: 1, y: 0, duration: 0.3 });
+        }
+    }
+
+    // Event Listeners
+    denomBtns.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const val = parseInt(e.target.dataset.val);
+            if (val === totalPieces) return; 
+            
+            denomBtns.forEach(b => b.classList.remove("active"));
+            e.target.classList.add("active");
+            
+            renderPizza(val);
+        });
+    });
+
+    replateBtn.addEventListener("click", resetPizza);
+
+    // Standard Controls
+    document.getElementById("header-fullscreen").addEventListener("click", () => {
+        if (!document.fullscreenElement) document.body.requestFullscreen();
+        else document.exitFullscreen();
+    });
+
+    // Initialize
+    renderPizza(2, true);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+{
+    "teacher_requirements": [
+        "用 3D 模型展示太陽系八大行星的排列和公轉",
+        "可以點擊行星看資料"
+    ],
+    "title": "探索太陽系八大行星",
+    "learning_goal": "認識太陽系八大行星按距日遠近的排列次序與繞日公轉特點",
+    "subject": "科學",
+    "audience": "upper_primary",
+    "language": "zh-Hant",
+    "demo_type": "model_3d",
+    "layout": "explorer",
+    "style": "night",
+    "libraries": [
+        "three",
+        "gsap"
+    ],
+    "scene": "深黑色星空背景帶微弱星塵粒子。中央為發光橘紅色的太陽，外圍有八條半透明同心圓軌道線，依次排列水星、金星、地球、火星、木星、土星（帶光環）、天王星、海王星。右上角浮現半透明資訊面板，左下角設有控制面板，畫面角落標示「行星大小及軌道距離為教學示意，非真實比例」。",
+    "interactions": [
+        {
+            "control": "click",
+            "label": "點選任意行星",
+            "effect": "鏡頭平滑拉近該行星，行星高亮發光，右側彈出資訊卡顯示中文名稱、距日次序及趣味特點"
+        },
+        {
+            "control": "button",
+            "label": "暫停／繼續公轉",
+            "effect": "切換八大行星繞日旋轉動畫的播放與暫停狀態"
+        },
+        {
+            "control": "slider",
+            "label": "公轉速度：1x",
+            "effect": "調整行星繞日轉速（0.5x 至 3x），越靠近太陽的行星公轉速度保持相對越快"
+        },
+        {
+            "control": "button",
+            "label": "全景重設",
+            "effect": "鏡頭拉回俯瞰全景，關閉當前行星資訊卡，取消行星高亮"
+        }
+    ],
+    "steps": [],
+    "motion": [
+        {
+            "target": "相機視角（Camera）",
+            "start_state": "距離原點 80 單位的傾斜俯瞰全景視角",
+            "trigger": "學生點擊特定行星",
+            "transform_origin": "目標行星中心點",
+            "ending": "時長 1.2 秒，使用 power2.inOut 平滑推進，無回彈",
+            "surroundings": "其餘行星與太陽亮度降低至 40%，背景星空微暗"
+        },
+        {
+            "target": "行星資訊卡（Info Card）",
+            "start_state": "位於畫面右側外部，透明度為 0，縮小至 0.8",
+            "trigger": "相機完成聚焦推進後立即觸發",
+            "transform_origin": "卡片中心",
+            "ending": "時長 0.4 秒，使用 back.out(1.4) 彈出，帶微輕彈",
+            "surroundings": "選取的行星邊緣產生淡藍色光暈輪廓"
+        },
+        {
+            "target": "行星公轉群組（Orbit Mesh）",
+            "start_state": "沿各自行道勻速繞 Y 軸旋轉",
+            "trigger": "點擊「暫停／繼續公轉」按鈕",
+            "transform_origin": "太陽中心點 (0, 0, 0)",
+            "ending": "時長 0.3 秒減速停止或恢復勻速，使用 power1.out",
+            "surroundings": "軌道線亮度短暫閃爍一下以示狀態切換"
+        }
+    ],
+    "labels": [
+        "太陽 (Sun)",
+        "水星 (Mercury)",
+        "金星 (Venus)",
+        "地球 (Earth)",
+        "火星 (Mars)",
+        "木星 (Jupiter)",
+        "土星 (Saturn)",
+        "天王星 (Uranus)",
+        "海王星 (Neptune)",
+        "公轉軌道 (Orbit)"
+    ],
+    "accuracy_notes": [
+        "必須標明「示意圖：天體大小與軌道間距並非真實比例」。",
+        "八大行星排列順序必須嚴格正確：水星、金星、地球、火星、木星、土星、天王星、海王星。",
+        "公轉相對快慢需符合克卜勒定律趨勢（內圈行星公轉週期短、速度快；外圈行星公轉週期長、速度慢）。"
+    ]
+}

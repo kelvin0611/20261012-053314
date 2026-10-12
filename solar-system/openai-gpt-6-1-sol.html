@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>探索太陽系八大行星</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    --bg: #120E26;
+    --fg: #FFFFFF;
+    --muted: #D9D4EE;
+    --surface: rgba(255,255,255,.10);
+    --border: rgba(255,255,255,.28);
+    --accent: #B79CFF;
+    --accent-fg: #191136;
+    --ok: #8BE8C0;
+    --warn: #FFA893;
+    --palette: #B79CFF, #7FE6E0, #FFD27F, #FF8FB1, #8BE8C0;
+    --radius: 18px;
+    --shadow: 0 20px 50px rgba(9,4,24,.45),inset 0 1px 0 rgba(255,255,255,.28);
+    --font-display: 'Plus Jakarta Sans','Noto Sans TC',sans-serif;
+    --font-body: 'Plus Jakarta Sans','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  #stage { position: relative; min-height: 0; overflow: hidden; background: var(--surface); }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  #controls { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  label { font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+  #stage { margin: 0 calc(var(--gap) * 1.5); }
+  #controls { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; margin: var(--gap) calc(var(--gap) * 1.5); }
+</style>
+<style>
+  .topbar h1 { font-size: clamp(34px, 2.7vw, 42px); }
+  .topbar .goal { font-size: 22px; margin-top: 7px; }
+  #stage { background: var(--bg); isolation: isolate; }
+  #controls { justify-content: flex-start; backdrop-filter: blur(14px); padding: 16px 24px; margin-top: 16px; margin-bottom: 20px; gap: 22px; }
+  #view, #labels, #label-leaders { position: absolute; inset: 0; }
+  #view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #labels { pointer-events: none; z-index: 2; }
+  #label-leaders { width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: hidden; }
+  #label-leaders line { stroke: var(--accent); stroke-width: 1.5; stroke-opacity: .6; }
+  .scene-note { position: absolute; left: 26px; top: 20px; z-index: 4; pointer-events: none; }
+  .scene-note strong { display: block; color: var(--accent); font-size: 22px; }
+  .scene-note span { font-size: 20px; color: var(--muted); }
+  .planet-label { pointer-events: auto; border: 1px solid var(--border); border-radius: var(--radius); color: var(--fg); background: var(--bg); font: 600 20px var(--font-body); padding: 5px 12px; min-height: 56px; display: flex; align-items: center; cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+  .planet-label.selected { border-color: var(--accent); color: var(--accent); }
+  .planet-label:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .sun-label { border: 0; background: transparent; box-shadow: none; color: var(--muted); pointer-events: none; font-size: 20px; }
+  #info { position: absolute; right: 24px; top: 24px; z-index: 6; width: 320px; padding: 24px; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(14px); visibility: hidden; transform-origin: center; }
+  #info h2 { margin: 0; font-size: 34px; line-height: 1.3; color: var(--fg); padding-right: 35px; }
+  #info .english { margin: 2px 0 16px; color: var(--accent); font-size: 20px; }
+  #info .order { margin: 0 0 16px; color: var(--accent); font-size: 22px; font-weight: 700; }
+  #info .fact { margin: 0 0 16px; font-size: 22px; }
+  #info .period { padding-top: 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 20px; }
+  #info .close { position: absolute; right: 10px; top: 10px; min-width: 56px; padding: 0; border: 0; background: transparent; }
+  .disclaimer { position: absolute; left: 26px; bottom: 20px; z-index: 4; color: var(--muted); pointer-events: none; font-size: 20px; line-height: 1.4; background: var(--bg); padding: 5px 10px; border-radius: var(--radius); }
+  .disclaimer small { display: block; font-size: 20px; }
+  .speed-control { width: 260px; display: flex; flex-direction: column; }
+  .speed-control label { font-size: 20px; }
+  .speed-control input { height: 28px; margin: 3px 0 0; cursor: pointer; }
+  #status { margin-left: auto; color: var(--muted); font-size: 20px; }
+  #status::before { content: '●'; color: var(--ok); padding-right: 9px; }
+  #status.paused::before { color: var(--warn); }
+  #toast { position: absolute; left: 50%; bottom: 105px; transform: translateX(-50%); z-index: 9; background: var(--bg); border: 1px solid var(--accent); padding: 12px 24px; border-radius: var(--radius); display: none; }
+  #planet-picker { position: absolute; right: 24px; bottom: 20px; z-index: 5; }
+  #planet-picker select { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); font: 600 20px var(--font-body); min-height: 56px; padding: 8px 14px; width: 205px; cursor: pointer; }
+  @media (max-width: 1100px) {
+    .topbar { gap: 12px; padding: 16px 24px; }
+    .topbar .goal { font-size: 20px; max-width: 590px; }
+    #stage { margin: 0 24px; }
+    #controls { margin: 12px 24px; gap: 12px; padding: 12px 18px; }
+    #status { display: none; }
+    #info { width: 290px; padding: 20px; }
+  }
+  @media (max-width: 760px) {
+    .topbar .goal { display: none; }
+    .topbar h1 { font-size: 34px; }
+    .topbar { flex-wrap: wrap; padding: 12px 24px; }
+    .topbar .btn { padding: 8px 12px; }
+    #controls { gap: 10px; padding: 12px; }
+    .speed-control { width: 210px; }
+    #info { width: 260px; right: 16px; top: 16px; padding: 16px; }
+    #info .fact { font-size: 20px; }
+    .scene-note span { display: none; }
+    .disclaimer { left: 20px; right: 20px; bottom: 84px; font-size: 20px; }
+    .disclaimer small { display: none; }
+    #planet-picker { right: 20px; bottom: 20px; }
+  }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>探索太陽系八大行星</h1>
+      <p class="goal">認識太陽系八大行星按距日遠近的排列次序與繞日公轉特點</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="reset-btn" type="button">↺ 重新開始</button>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  <main id="stage" class="card" aria-label="演示畫面">
+    <div id="view"></div>
+    <svg id="label-leaders" aria-hidden="true"></svg>
+    <div id="labels"></div>
+    <div class="scene-note">
+      <strong>點選任意行星</strong>
+      <span>拖曳轉動視角・滾輪或雙指縮放</span>
+    </div>
+    <aside id="info" class="card" aria-live="polite" aria-hidden="true">
+      <button class="btn close" id="close-info" aria-label="關閉資料並返回全景" type="button">×</button>
+      <h2 id="info-name"></h2>
+      <p class="english" id="info-english"></p>
+      <p class="order" id="info-order"></p>
+      <p class="fact" id="info-fact"></p>
+      <div class="period" id="info-period"></div>
+    </aside>
+    <div class="disclaimer">
+      示意圖：天體大小與軌道間距並非真實比例
+      <small>公轉軌道 (Orbit)・內圈快，外圈慢；動畫已加快並壓縮週期差異。</small>
+    </div>
+    <div id="planet-picker">
+      <select id="pick" aria-label="按距日次序選擇行星">
+        <option value="">按次序選行星</option>
+        <option value="0">1　水星</option><option value="1">2　金星</option>
+        <option value="2">3　地球</option><option value="3">4　火星</option>
+        <option value="4">5　木星</option><option value="5">6　土星</option>
+        <option value="6">7　天王星</option><option value="7">8　海王星</option>
+      </select>
+    </div>
+    <div id="toast" role="status"></div>
+  </main>
+  <div id="controls" class="card" aria-label="控制面板"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+gsap.registerPlugin(Draggable, MotionPathPlugin);
+
+const palette = Viz.color('--palette').split(',').map(s => s.trim());
+const accent = Viz.color('--accent');
+const bg = Viz.color('--bg');
+const data = [
+  {name:'水星', en:'Mercury', radius:6, size:.66, color:'#aaa39e', days:87.97, period:'約 88 個地球日', fact:'最接近太陽，也是八大行星中最小的一顆。表面佈滿隕石坑。', kind:'rock', angle:2.9},
+  {name:'金星', en:'Venus', radius:9, size:1.03, color:palette[2], days:224.7, period:'約 225 個地球日', fact:'厚厚的大氣層困住熱力。它比水星更熱，是最熱的行星。', kind:'cloud', angle:.55},
+  {name:'地球', en:'Earth', radius:12, size:1.08, color:'#448bc5', days:365.25, period:'約 365 個地球日', fact:'我們的家園！表面有大片液態海洋，是目前唯一已知有生命的行星。', kind:'earth', angle:4.2},
+  {name:'火星', en:'Mars', radius:15, size:.84, color:'#d98164', days:686.98, period:'約 687 個地球日', fact:'表面含有氧化鐵，呈紅色，因此又叫「紅色星球」。', kind:'rock', angle:2.15},
+  {name:'木星', en:'Jupiter', radius:19, size:1.92, color:palette[2], days:4332.59, period:'約 11.9 個地球年', fact:'八大行星中最大的一顆！大紅斑是一個持續多年的巨大風暴。', kind:'jupiter', angle:5.75},
+  {name:'土星', en:'Saturn', radius:23, size:1.62, color:'#e0c590', days:10759.22, period:'約 29.5 個地球年', fact:'擁有醒目的光環，主要由無數冰粒及少量岩石碎片組成。', kind:'bands', angle:3.38},
+  {name:'天王星', en:'Uranus', radius:27, size:1.29, color:palette[1], days:30688.5, period:'約 84 個地球年', fact:'自轉軸傾斜很大，像「側躺着」自轉的冰巨行星。', kind:'cloud', angle:1.1},
+  {name:'海王星', en:'Neptune', radius:31, size:1.27, color:'#527ce3', days:60182, period:'約 165 個地球年', fact:'八大行星中離太陽最遠的一顆，藍色大氣中有猛烈的風。', kind:'bands', angle:4.9}
+];
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(bg);
+const camera = new THREE.PerspectiveCamera(48, 1, .1, 450);
+const home = new THREE.Vector3(0, 64, 48);
+camera.position.copy(home);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+} catch (_) {
+  document.getElementById('view').innerHTML = '<p style="padding:32px">此裝置未能啟動 3D 畫面，請使用支援 WebGL 的瀏覽器。</p>';
+}
+if (renderer) init();
+
+function init() {
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  renderer.setClearColor(bg);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  document.getElementById('view').append(renderer.domElement);
+
+  const labelsRenderer = new CSS2DRenderer();
+  document.getElementById('labels').append(labelsRenderer.domElement);
+  labelsRenderer.domElement.style.pointerEvents = 'none';
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = !Viz.reducedMotion;
+  controls.dampingFactor = .09;
+  controls.minDistance = 6;
+  controls.maxDistance = 115;
+  controls.maxPolarAngle = Math.PI * .88;
+  controls.enablePan = false;
+
+  scene.add(new THREE.HemisphereLight(palette[1], bg, 1.7));
+  const key = new THREE.DirectionalLight(palette[2], 2.1);
+  key.position.set(-15, 30, 22); scene.add(key);
+  const fill = new THREE.DirectionalLight(accent, .8);
+  fill.position.set(20, 5, -15); scene.add(fill);
+  const sunLight = new THREE.PointLight(palette[2], 35, 110, 1);
+  scene.add(sunLight);
+
+  let seed = 641;
+  const random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const starPositions = [];
+  for (let i = 0; i < 1250; i++) {
+    const a = random() * Math.PI * 2, y = random() * 2 - 1;
+    const r = 130 + random() * 50, q = Math.sqrt(1-y*y);
+    starPositions.push(Math.cos(a)*q*r, y*r, Math.sin(a)*q*r);
+  }
+  const starGeometry = new THREE.BufferGeometry();
+  starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions,3));
+  const starMaterial = new THREE.PointsMaterial({color:Viz.color('--muted'), size:.28, transparent:true, opacity:.65, sizeAttenuation:true, depthWrite:false});
+  scene.add(new THREE.Points(starGeometry, starMaterial));
+
+  function texture(d) {
+    const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle=d.color; ctx.fillRect(0,0,512,256);
+    if (d.kind === 'earth') {
+      const land = [
+        [[25,72],[53,40],[108,35],[144,66],[118,88],[110,118],[76,115],[68,88]],
+        [[111,127],[140,128],[160,159],[144,207],[124,219],[112,177]],
+        [[224,76],[249,49],[274,60],[287,96],[265,112],[275,158],[246,190],[224,150],[209,112]],
+        [[281,58],[316,38],[384,45],[442,81],[397,111],[361,95],[346,142],[320,127]],
+        [[385,167],[417,161],[445,184],[421,205],[389,199]]
+      ];
+      ctx.fillStyle = palette[4];
+      land.forEach(poly => {ctx.beginPath(); poly.forEach((p,i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.closePath(); ctx.fill();});
+      ctx.fillStyle=Viz.color('--fg');
+      ctx.fillRect(0,0,512,12); ctx.fillRect(0,245,512,11);
+      for(let i=0;i<36;i++) {
+        ctx.globalAlpha=.3; ctx.beginPath();
+        ctx.ellipse(random()*512,random()*230+12,25+random()*30,2+random()*5,-.1,0,Math.PI*2); ctx.fill();
+      }
+    } else if (d.kind === 'bands' || d.kind === 'jupiter' || d.kind === 'cloud') {
+      for(let y=0;y<256;y+=5) {
+        ctx.globalAlpha=d.kind==='cloud' ? .10 : .24;
+        ctx.fillStyle=(Math.floor(y/16)%2) ? bg : palette[2];
+        ctx.fillRect(0,y,512,4+random()*10);
+      }
+      if(d.kind==='jupiter') {
+        ctx.globalAlpha=.8;ctx.fillStyle='#b5634f';ctx.beginPath();ctx.ellipse(340,160,37,15,-.05,0,Math.PI*2);ctx.fill();
+        ctx.globalAlpha=.3;ctx.strokeStyle=palette[2];ctx.lineWidth=4;ctx.stroke();
+      }
+    } else {
+      for(let i=0;i<240;i++) {
+        ctx.globalAlpha=.12+random()*.12;ctx.fillStyle=i%2 ? bg : palette[2];
+        ctx.beginPath(); ctx.arc(random()*512,random()*256,2+random()*9,0,Math.PI*2);ctx.fill();
+      }
+    }
+    ctx.globalAlpha=1;
+    const t = new THREE.CanvasTexture(canvas); t.colorSpace=THREE.SRGBColorSpace; return t;
+  }
+  function glowTexture() {
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    const x=c.getContext('2d'), g=x.createRadialGradient(64,64,17,64,64,64);
+    g.addColorStop(0,'rgba(255,255,255,0.65)');
+    g.addColorStop(.4,'rgba(255,255,255,0.22)'); g.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=g; x.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+  }
+  const glowMap=glowTexture();
+  const sunMaterial=new THREE.MeshStandardMaterial({
+    color:'#ff9b46', emissive:'#f37935', emissiveIntensity:2.2, roughness:1
+  });
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(2.8,48,32),sunMaterial); scene.add(sun);
+  const solarGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowMap,color:palette[2],transparent:true,opacity:.65,depthWrite:false,blending:THREE.AdditiveBlending}));
+  solarGlow.scale.set(14,14,1); scene.add(solarGlow);
+  const sunEl=document.createElement('div');sunEl.className='planet-label sun-label';sunEl.textContent='太陽 (Sun)';
+  const sunLabel=new CSS2DObject(sunEl);
+  scene.add(sunLabel);
+
+  const orbitMaterials=[], planets=[], pickMeshes=[];
+  const leaders=document.getElementById('label-leaders');
+  data.forEach((d,i) => {
+    const points=[];
+    for(let j=0;j<=240;j++) { const a=j/240*Math.PI*2; points.push(new THREE.Vector3(Math.cos(a)*d.radius,0,Math.sin(a)*d.radius)); }
+    const om=new THREE.LineBasicMaterial({color:accent,transparent:true,opacity:.25,depthWrite:false});
+    orbitMaterials.push(om);scene.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points),om));
+    const orbit=new THREE.Group();scene.add(orbit); orbit.rotation.y=d.angle;
+    const body=new THREE.Group(); body.position.x=d.radius; orbit.add(body);
+    const mat=new THREE.MeshStandardMaterial({map:texture(d),color:Viz.color('--fg'),roughness:.86,metalness:.03,emissive:palette[1],emissiveIntensity:0});
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(d.size,48,32),mat);
+    mesh.userData.index=i;body.add(mesh);pickMeshes.push(mesh);
+    if(d.name==='天王星') mesh.rotation.z=98*Math.PI/180;
+    if(d.name==='土星') {
+      const ringGeo=new THREE.RingGeometry(d.size*1.4,d.size*2.3,96);
+      const ringMat=new THREE.MeshStandardMaterial({color:d.color,side:THREE.DoubleSide,transparent:true,opacity:.76,roughness:1});
+      const ring=new THREE.Mesh(ringGeo,ringMat);ring.rotation.x=Math.PI/2-.34;ring.userData.index=i;body.add(ring);pickMeshes.push(ring);
+      for(let k=0;k<5;k++) {
+        const lineMat=new THREE.MeshStandardMaterial({color:palette[2],side:THREE.DoubleSide,transparent:true,opacity:.36,roughness:1});
+        const rr=d.size*(1.48+k*.16);
+        const r=new THREE.Mesh(new THREE.RingGeometry(rr,rr+.05,96),lineMat);r.rotation.copy(ring.rotation);body.add(r);
+      }
+    }
+    const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowMap,color:palette[1],transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
+    halo.scale.set(d.size*4.2,d.size*4.2,1);body.add(halo);
+    const el=document.createElement('button');el.type='button';el.className='planet-label';el.textContent=d.name;
+    el.setAttribute('aria-label',`${d.name} (${d.en})，距日第 ${i+1} 顆，點選查看資料`);
+    el.addEventListener('click',e => {e.stopPropagation();selectPlanet(i);});
+    const label=new CSS2DObject(el);
+    scene.add(label);
+    const leader=document.createElementNS('http://www.w3.org/2000/svg','line');
+    leaders.append(leader);
+    const materials=[];
+    body.traverse(o=>{if(o.isMesh)materials.push({material:o.material,base:o.material.color.clone()});});
+    planets.push({d,orbit,body,mesh,halo,label,el,leader,materials,initialAngle:d.angle});
+  });
+
+  let speed=1, paused=Viz.reducedMotion, selected=-1, focusReady=false;
+  const state={rate:paused?0:1};
+  let focusTween=null, cardTween=null;
+  const previousPosition=new THREE.Vector3();
+  const temp=new THREE.Vector3();
+  const info=document.getElementById('info');
+  const pick=document.getElementById('pick');
+  const pauseButton=Viz.button('暫停／繼續公轉',togglePause,true);
+  pauseButton.setAttribute('aria-label','暫停／繼續公轉');
+  const sliderControl=Viz.slider({label:'公轉速度',min:.5,max:3,step:.1,value:1,unit:'x',onInput:v=>speed=v});
+  const speedInput=document.getElementById('controls').querySelector('input[type="range"]');
+  if(speedInput) {
+    const holder=speedInput.closest('div');
+    if(holder && holder.parentElement===document.getElementById('controls'))holder.classList.add('speed-control');
+  }
+  Viz.button('全景重設',()=>overview(true));
+  const status=document.createElement('div');status.id='status';document.getElementById('controls').append(status);
+  function updateStatus() {
+    status.textContent=paused?'公轉已暫停':'公轉中';
+    status.classList.toggle('paused',paused);
+    pauseButton.textContent=paused?'▶ 繼續公轉':'Ⅱ 暫停公轉';
+    pauseButton.setAttribute('aria-pressed',String(paused));
+  }
+  updateStatus();
+  function togglePause() {
+    paused=!paused;updateStatus();
+    gsap.to(state,{rate:paused?0:1,duration:Viz.duration(.3),ease:'power1.out',overwrite:true});
+    orbitMaterials.forEach(m=>{
+      gsap.killTweensOf(m);
+      gsap.timeline().to(m,{opacity:.55,duration:Viz.duration(.15),ease:'power1.out'}).to(m,{opacity:.25,duration:Viz.duration(.15),ease:'power1.out'});
+    });
+  }
+  if(typeof Viz.onSpace==='function')Viz.onSpace(togglePause);
+  else document.addEventListener('keydown',e=>{
+    if(e.code!=='Space'||e.target.matches('input,select,textarea,button')||e.ctrlKey||e.metaKey||e.altKey)return;
+    e.preventDefault();
+    togglePause();
+  });
+
+  function hideCard() {
+    if(cardTween) cardTween.kill();
+    gsap.set(info,{visibility:'hidden',opacity:0,x:380,scale:.8});
+    info.setAttribute('aria-hidden','true');
+  }
+  hideCard();
+  function brightness() {
+    planets.forEach((p,i)=>{
+      const dim=selected>=0&&selected!==i;
+      p.materials.forEach(({material,base})=>material.color.copy(base).multiplyScalar(dim?.4:1));
+      p.mesh.material.emissiveIntensity=selected===i?.16:0;
+      p.el.classList.toggle('selected',selected===i);
+      p.el.style.opacity=dim?'0.4':'1';
+      p.leader.style.opacity=dim?'0.4':'1';
+      p.halo.material.opacity=0;
+    });
+    sunMaterial.color.set('#ff9b46').multiplyScalar(selected>=0?.4:1);
+    sunMaterial.emissiveIntensity=selected>=0?.88:2.2;
+    solarGlow.material.opacity=selected>=0?.26:.65;
+    starMaterial.opacity=selected>=0?.36:.65;
+    sunEl.style.opacity=selected>=0?.4:1;
+  }
+  function stopFocus() {
+    if(focusTween)focusTween.kill();
+    focusTween=null; focusReady=false;
+    controls.enabled=true;
+  }
+  function selectPlanet(index) {
+    if(index<0||index>=planets.length)return;
+    stopFocus();hideCard();
+    selected=index;pick.value=String(index);brightness();
+    const p=planets[index], d=p.d;
+    document.getElementById('info-name').textContent=d.name;
+    document.getElementById('info-english').textContent=`${d.name} (${d.en})`;
+    document.getElementById('info-order').textContent=`距日次序：第 ${index+1} 顆`;
+    document.getElementById('info-fact').textContent=d.fact;
+    document.getElementById('info-period').textContent=`公轉一周：${d.period}`;
+    const startCamera=camera.position.clone(), startTarget=controls.target.clone();
+    const direction=camera.position.clone().sub(controls.target).normalize();
+    const distance=d.name==='土星'?17:Math.max(10,d.size*7);
+    const transition={t:0};
+    controls.enabled=false;
+    function move() {
+      p.body.getWorldPosition(temp);
+      controls.target.copy(startTarget).lerp(temp,transition.t);
+      camera.position.copy(startCamera).lerp(temp.clone().addScaledVector(direction,distance),transition.t);
+      camera.lookAt(controls.target);
+    }
+    focusTween=gsap.to(transition,{
+      t:1,duration:Viz.duration(1.2),ease:'power2.inOut',
+      onUpdate:move,
+      onComplete:()=>{
+        move();p.body.getWorldPosition(previousPosition);focusReady=true;controls.enabled=true;focusTween=null;
+        info.setAttribute('aria-hidden','false');
+        gsap.set(info,{visibility:'visible',x:380,scale:.8,opacity:0});
+        cardTween=gsap.to(info,{x:0,scale:1,opacity:1,duration:Viz.duration(.4),ease:'back.out(1.4)'});
+        gsap.to(p.halo.material,{opacity:.5,duration:Viz.duration(.4),ease:'sine.inOut',overwrite:true});
+      }
+    });
+  }
+  function overview(animate) {
+    stopFocus();hideCard();selected=-1;pick.value='';brightness();
+    planets.forEach(p=>gsap.killTweensOf(p.halo.material));
+    controls.enabled=false;
+    const startCam=camera.position.clone(),startTarget=controls.target.clone(),tr={t:0};
+    focusTween=gsap.to(tr,{
+      t:1,duration:animate?Viz.duration(1.2):0,ease:'power2.inOut',
+      onUpdate:()=>{
+        camera.position.copy(startCam).lerp(home,tr.t);
+        controls.target.copy(startTarget).multiplyScalar(1-tr.t);
+        camera.lookAt(controls.target);
+      },
+      onComplete:()=>{
+        camera.position.copy(home);controls.target.set(0,0,0);camera.lookAt(controls.target);
+        controls.enabled=true;focusTween=null;controls.update();
+      }
+    });
+  }
+  document.getElementById('close-info').addEventListener('click',()=>overview(true));
+  pick.addEventListener('change',()=>{if(pick.value!=='')selectPlanet(Number(pick.value));});
+  Viz.onReset(()=>{
+    speed=1;paused=Viz.reducedMotion;
+    gsap.killTweensOf(state);state.rate=paused?0:1;updateStatus();
+    planets.forEach(p=>{p.orbit.rotation.y=p.initialAngle;p.mesh.rotation.y=0;});
+    orbitMaterials.forEach(m=>{gsap.killTweensOf(m);m.opacity=.25;});
+    overview(false);
+  });
+
+  const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2();
+  let down=null;
+  renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};});
+  renderer.domElement.addEventListener('pointercancel',()=>down=null);
+  renderer.domElement.addEventListener('pointerup',e=>{
+    if(!down)return;
+    const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y);down=null;
+    if(moved>7)return;
+    const r=renderer.domElement.getBoundingClientRect();
+    pointer.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);
+    raycaster.setFromCamera(pointer,camera);
+    const hits=raycaster.intersectObjects(pickMeshes);
+    if(hits.length)selectPlanet(hits[0].object.userData.index);
+  });
+
+  function resize() {
+    const {width,height}=Viz.size(); if(!width||!height)return;
+    renderer.setSize(width,height);labelsRenderer.setSize(width,height);
+    leaders.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    camera.aspect=width/height;camera.updateProjectionMatrix();
+  }
+  Viz.onResize(resize);resize();
+  overview(false);
+
+  const projected=new THREE.Vector3();
+  const screenAnchor=new THREE.Vector3();
+  const stage=document.getElementById('stage');
+  const note=document.querySelector('.scene-note');
+  const disclaimer=document.querySelector('.disclaimer');
+  const picker=document.getElementById('planet-picker');
+
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+  function overlaps(a,b,gap=10) {
+    return a.x<b.x+b.w+gap && a.x+a.w+gap>b.x &&
+           a.y<b.y+b.h+gap && a.y+a.h+gap>b.y;
+  }
+  function placeLabel(label,x,y,width,height) {
+    screenAnchor.set(x/width*2-1,1-y/height*2,.5).unproject(camera);
+    label.position.copy(screenAnchor);
+    label.updateMatrixWorld(true);
+    label.visible=true;
+    label.element.style.visibility='visible';
+  }
+
+  function layoutLabels() {
+    const {width,height}=Viz.size();
+    if(!width||!height)return;
+    camera.updateMatrixWorld(true);
+    const used=[];
+    const stageRect=stage.getBoundingClientRect();
+    function reserve(el) {
+      const r=el.getBoundingClientRect();
+      if(r.width&&r.height)used.push({x:r.left-stageRect.left,y:r.top-stageRect.top,w:r.width,h:r.height});
+    }
+    reserve(note);reserve(disclaimer);reserve(picker);
+    if(selected>=0&&focusReady) {
+      used.push({
+        x:width-info.offsetWidth-parseFloat(getComputedStyle(info).right),
+        y:parseFloat(getComputedStyle(info).top),
+        w:info.offsetWidth,h:info.offsetHeight
+      });
+    }
+
+    sun.getWorldPosition(projected);projected.project(camera);
+    const sunInView=projected.z>=-1&&projected.z<=1&&Math.abs(projected.x)<1&&Math.abs(projected.y)<1;
+    if(sunInView) {
+      const sw=sunEl.offsetWidth||128, sh=sunEl.offsetHeight||56;
+      const sx=clamp((projected.x+1)*width/2,24+sw/2,width-24-sw/2);
+      const sy=clamp((1-projected.y)*height/2+50,24+sh/2,height-24-sh/2);
+      placeLabel(sunLabel,sx,sy,width,height);
+      used.push({x:sx-sw/2,y:sy-sh/2,w:sw,h:sh});
+    } else {
+      sunLabel.visible=false;
+      sunEl.style.visibility='hidden';
+    }
+
+    const order=planets.map((p,i)=>({p,i})).sort((a,b)=>
+      Number(b.i===selected)-Number(a.i===selected)||a.i-b.i
+    );
+
+    order.forEach(({p})=>{
+      const w=p.el.offsetWidth||(p.d.name.length*20+26);
+      const h=p.el.offsetHeight||56;
+      projected.set(0,p.d.size+1.2,0).applyMatrix4(p.body.matrixWorld).project(camera);
+      const naturalX=(projected.x+1)*width/2;
+      const naturalY=(1-projected.y)*height/2;
+      const minX=24+w/2,maxX=Math.max(minX,width-24-w/2);
+      const minY=24+h/2,maxY=Math.max(minY,height-24-h/2);
+      const desiredX=clamp(Number.isFinite(naturalX)?naturalX:width/2,minX,maxX);
+      const desiredY=clamp(Number.isFinite(naturalY)?naturalY:height/2,minY,maxY);
+      let best=null,bestScore=Infinity;
+      function consider(x,y) {
+        x=clamp(x,minX,maxX);y=clamp(y,minY,maxY);
+        const r={x:x-w/2,y:y-h/2,w,h};
+        if(used.some(other=>overlaps(r,other)))return;
+        const score=(x-desiredX)**2+(y-desiredY)**2;
+        if(score<bestScore){bestScore=score;best={x,y,r};}
+      }
+      consider(desiredX,desiredY);
+      if(!best) {
+        for(let dy=-4;dy<=4;dy++) {
+          for(let dx=-4;dx<=4;dx++)consider(desiredX+dx*(w+14),desiredY+dy*(h+14));
+        }
+      }
+      if(!best) {
+        for(let y=minY;y<=maxY;y+=12) {
+          for(let x=minX;x<=maxX;x+=12)consider(x,y);
+        }
+      }
+      if(!best)best={x:desiredX,y:desiredY,r:{x:desiredX-w/2,y:desiredY-h/2,w,h}};
+      used.push(best.r);
+      placeLabel(p.label,best.x,best.y,width,height);
+
+      p.body.getWorldPosition(projected);projected.project(camera);
+      const px=(projected.x+1)*width/2,py=(1-projected.y)*height/2;
+      const inView=projected.z>=-1&&projected.z<=1&&px>=0&&px<=width&&py>=0&&py<=height;
+      p.leader.style.display=inView?'':'none';
+      if(inView) {
+        const endX=clamp(px,best.r.x,best.r.x+w);
+        const endY=clamp(py,best.r.y,best.r.y+h);
+        p.leader.setAttribute('x1',px);
+        p.leader.setAttribute('y1',py);
+        p.leader.setAttribute('x2',endX);
+        p.leader.setAttribute('y2',endY);
+      }
+    });
+  }
+
+  function renderFrame(dt) {
+    planets.forEach(p=>{
+      p.orbit.rotation.y+=dt*state.rate*speed*.24*Math.pow(87.97/p.d.days,.48);
+    });
+    scene.updateMatrixWorld(true);
+    if(selected>=0&&focusReady) {
+      planets[selected].body.getWorldPosition(temp);
+      const delta=temp.clone().sub(previousPosition);
+      camera.position.add(delta);controls.target.add(delta);previousPosition.copy(temp);
+    }
+    controls.update();
+    layoutLabels();
+    renderer.render(scene,camera);
+    labelsRenderer.render(scene,camera);
+  }
+  renderFrame(0);
+  Viz.loop(dt=>renderFrame(dt));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+{
+    "teacher_requirements": [
+        "水循環：蒸發、凝結、降水、收集，一步一步動畫"
+    ],
+    "title": "神奇的水循環之旅",
+    "learning_goal": "明白水在自然界中透過蒸發、凝結、降水和收集不斷循環流動。",
+    "subject": "科學",
+    "audience": "upper_primary",
+    "language": "zh-Hant",
+    "demo_type": "step_animation",
+    "layout": "stepper",
+    "style": "clay",
+    "libraries": [
+        "gsap"
+    ],
+    "scene": "黏土風橫向自然景觀剖面：左下方為碧藍的大海與河流，右方為青綠起伏的山脈，上方為天空。太陽位於左上方散發微光。畫面中央以大字標籤及動態水珠引導視線。藍色代表液態水、半透明白色代表水蒸氣、灰色厚雲代表飽和水滴群。",
+    "interactions": [
+        {
+            "control": "button",
+            "label": "下一步",
+            "effect": "依序推進到下一個水循環階段，動畫相應播放，下方字幕與標籤同步更新。"
+        },
+        {
+            "control": "button",
+            "label": "上一步",
+            "effect": "退回上一個水循環階段，畫面重現上一階段的狀態。"
+        },
+        {
+            "control": "button",
+            "label": "重播這一步",
+            "effect": "重新播放當前步驟的動效，方便全班再次觀察細節。"
+        }
+    ],
+    "steps": [
+        {
+            "caption": "太陽照射海洋，水受熱變成看不見的水蒸氣上升。",
+            "what_happens": "太陽散發暖黃光芒，海面泛起波紋，多顆半透明小水珠轉化為上升氣流箭頭慢慢飄向空中。"
+        },
+        {
+            "caption": "水蒸氣在高空遇冷，聚集凝結成微小水滴並形成雲。",
+            "what_happens": "上升的氣流在高空聚攏，天空逐漸膨脹出幾朵柔軟的白色積雲，並伴隨冷卻光效。"
+        },
+        {
+            "caption": "雲裡的水滴越來越多、變重，化成雨水降落地面。",
+            "what_happens": "雲朵顏色變深為灰藍色，開始向下落下密集雨滴，雨水灑在右側山坡與樹木上。"
+        },
+        {
+            "caption": "雨水流入小溪與地底，匯集流回大海，重新開始！",
+            "what_happens": "山坡上的水滴匯聚成藍色小溪，順著地勢蜿蜒奔流，最終全數流回大海，形成封閉循環線。"
+        }
+    ],
+    "motion": [
+        {
+            "target": "海面蒸發水汽粒子",
+            "start_state": "貼近海面，透明度 0.2，垂直位置在最底部",
+            "trigger": "進入第 1 步（蒸發）或點擊重播",
+            "transform_origin": "center bottom",
+            "ending": "歷時 1.6 秒，ease-out 向上飄升並淡出，無回彈",
+            "surroundings": "太陽柔和脈衝放大 1.1 倍，高空雲層微淡"
+        },
+        {
+            "target": "高空凝結雲朵",
+            "start_state": "雲朵體積縮小至 30%，透明度 0，散開在天空兩側",
+            "trigger": "進入第 2 步（凝結）",
+            "transform_origin": "center center",
+            "ending": "歷時 1.4 秒，spring 彈性聚攏膨脹至 100%，停下時輕微回彈",
+            "surroundings": "海面水蒸氣箭頭減弱，天空背景色微轉淡青冷色"
+        },
+        {
+            "target": "降水雨滴群",
+            "start_state": "隱藏在雲層底部內部，透明度 0",
+            "trigger": "進入第 3 步（降水）",
+            "transform_origin": "top center",
+            "ending": "歷時 1.2 秒連續循環落下，linear 勻速下落，接觸山泥時濺起小水花",
+            "surroundings": "雲朵稍微下沉 10px 並顫動，山脈草地轉為深翠綠"
+        },
+        {
+            "target": "地表逕流匯集水波",
+            "start_state": "沿山徑的溪流路徑 stroke-dashoffset 完全隱藏",
+            "trigger": "進入第 4 步（收集）",
+            "transform_origin": "top right",
+            "ending": "歷時 2.0 秒，ease-in-out 順著曲線路徑畫出溪流並注入大海，末端輕微泛起漣漪",
+            "surroundings": "全景循環光箭頭亮起，其他非關鍵地貌稍降對比度以突顯水流"
+        }
+    ],
+    "labels": [
+        "蒸發 (Evaporation)",
+        "凝結 (Condensation)",
+        "降水 (Precipitation)",
+        "收集 (Collection)"
+    ],
+    "accuracy_notes": [
+        "水蒸氣本身為肉眼不可見的氣體，畫面上以半透明氣泡和上升箭頭為教學示意。",
+        "雨水收集包括地表逕流及地下水滲透，此處以山溪匯流入海作小學直觀示意。",
+        "畫面比例非真實地理尺寸，標示「示意圖，比例不準確」。"
+    ]
+}

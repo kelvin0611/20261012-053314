@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>神奇的水循環之旅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&amp;family=Nunito:wght@400;700&amp;family=Noto+Sans+TC:wght@400;700&amp;display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F3FF;
+    --fg: #3A2340;
+    --muted: #5B4A6B;
+    --surface: #FFFFFF;
+    --border: #E7E1EE;
+    --accent: #6B3FA0;
+    --accent-fg: #FFFFFF;
+    --ok: #1F7A45;
+    --warn: #C2185B;
+    --palette: #FFD6E0, #C3F0CA, #B8E1FF, #FFE9A8;
+    --radius: 30px;
+    --shadow: 0 12px 0 -4px rgba(58,35,64,.10),0 18px 28px rgba(58,35,64,.14),inset 0 -4px 0 rgba(58,35,64,.06);
+    --font-display: 'Fredoka','Noto Sans TC',sans-serif;
+    --font-body: 'Nunito','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  #stage { position: relative; min-height: 0; overflow: hidden; background: var(--surface); }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  #controls { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  label { font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+  .layout { display: grid; grid-template-columns: 1fr minmax(260px, 22vw); gap: var(--gap); padding: 0 calc(var(--gap) * 1.5); min-height: 0; }
+  #caption { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); font-size: clamp(22px, 2vw, 30px); font-weight: 600; }
+  #caption .text { flex: 1; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } #controls { max-height: 30vh; } }
+
+  :root {
+    --pink: #FFD6E0;
+    --green: #C3F0CA;
+    --blue: #B8E1FF;
+    --yellow: #FFE9A8;
+    --water: #287DB2;
+    --water-light: #78C8EF;
+    --land: #78B78B;
+    --land-wet: #3F825C;
+    --soil: #CDB4A0;
+    --cloud: #D7E1EB;
+    --cloud-dark: #829BAD;
+  }
+  .topbar h1 { font-size: clamp(34px, 2.8vw, 42px); }
+  .topbar .goal { max-width: 860px; }
+  #caption { min-height: 116px; }
+  #caption .text { line-height: 1.45; }
+  #step-indicator { white-space: nowrap; font-size: 20px; color: var(--muted); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn:active:not(:disabled) { transform: scale(.96); }
+  #stage { background: var(--blue); isolation: isolate; }
+  .scene { display: block; width: 100%; height: 100%; }
+  .scene-heading { position: absolute; top: 23px; left: 24px; right: 24px; text-align: center; pointer-events: none; }
+  .scene-heading h2 { margin: 0; font-family: var(--font-display); font-size: clamp(34px, 2.5vw, 42px); line-height: 1.2; }
+  .scene-heading .english { font-size: 20px; color: var(--muted); margin-top: 4px; }
+  .scene-note { position: absolute; bottom: 19px; left: 24px; right: 24px; display: flex; justify-content: space-between; gap: 18px; font-size: 20px; color: var(--fg); }
+  .scene-note span { background: var(--surface); padding: 3px 12px; border-radius: var(--radius); }
+  .panel-title { font-size: 22px; margin: 0; color: var(--muted); }
+  .process-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; }
+  .process-list li { display: flex; align-items: center; gap: 12px; padding: 5px 0; color: var(--muted); font-weight: 700; }
+  .process-list .number { border: 2px solid var(--border); width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 700 22px var(--font-display); }
+  .process-list li.active { color: var(--accent); }
+  .process-list li.active .number { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+  .teacher-note { font-size: 20px; line-height: 1.5; color: var(--muted); margin: 0; border-top: 2px solid var(--border); padding-top: 12px; }
+  .teacher-note strong { color: var(--fg); }
+  #controls .btn { width: 100%; }
+  .keyboard-note { font-size: 20px; color: var(--muted); margin: auto 0 0; }
+  svg .land { fill: var(--land); }
+  svg .water { fill: var(--water); }
+  svg .stream { fill: none; stroke: var(--water); stroke-linecap: round; stroke-linejoin: round; }
+  svg .vapour { fill: var(--surface); stroke: var(--water); stroke-width: 2; }
+  svg .air-arrow { fill: none; stroke: var(--surface); stroke-width: 9; stroke-linecap: round; }
+  svg .rain-drop { fill: var(--water); }
+  svg .cycle-line { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 9 13; }
+  @media (max-width: 1100px) {
+    .topbar { padding-top: 15px; padding-bottom: 15px; }
+    .topbar .goal { max-width: 650px; }
+    #caption { gap: 12px; padding-top: 16px; padding-bottom: 16px; }
+    #step-indicator { font-size: 20px; }
+    #controls { gap: 10px; }
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr 235px; gap: 14px; padding: 0 24px; }
+    #controls { max-height: none; padding: 16px; }
+    .topbar { padding: 16px 24px; gap: 12px; }
+    .topbar .goal { display: none; }
+    .topbar .btn { padding: 10px 14px; }
+    #caption { padding: 16px 24px; font-size: 22px; }
+    #step-indicator { display: none; }
+    .scene-note { font-size: 20px; }
+    .scene-note span:first-child { display: none; }
+    .keyboard-note { display: none; }
+    .scene-heading { top: 20px; }
+  }
+  @media (max-height: 650px) {
+    .topbar .goal, .keyboard-note { display: none; }
+    #caption { min-height: 96px; }
+    #controls { gap: 8px; }
+    .process-list { gap: 0; }
+    .teacher-note { font-size: 20px; }
+  }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>神奇的水循環之旅</h1>
+      <p class="goal">明白水在自然界中透過蒸發、凝結、降水和收集不斷循環流動。</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="reset-btn" type="button">↺ 重新開始</button>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  <div class="layout">
+    <main id="stage" class="card" aria-label="演示畫面">
+      <svg class="scene" viewBox="0 0 1000 580" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="scene-title scene-description">
+        <title id="scene-title">水循環自然景觀</title>
+        <desc id="scene-description">左邊是太陽和大海，右邊是山脈。逐步觀察水蒸氣上升、形成雲、下雨，以及水流回大海。</desc>
+        <defs>
+          <linearGradient id="sky-gradient" x2="0" y2="1">
+            <stop stop-color="var(--blue)"/>
+            <stop offset="1" stop-color="var(--surface)"/>
+          </linearGradient>
+          <linearGradient id="sea-gradient" x2="0" y2="1">
+            <stop stop-color="var(--water-light)"/>
+            <stop offset="1" stop-color="var(--water)"/>
+          </linearGradient>
+          <linearGradient id="sun-gradient" x2=".8" y2="1">
+            <stop stop-color="var(--surface)"/>
+            <stop offset=".4" stop-color="var(--yellow)"/>
+            <stop offset="1" stop-color="var(--yellow)"/>
+          </linearGradient>
+          <linearGradient id="cloud-gradient" x2="0" y2="1">
+            <stop id="cloud-top" stop-color="var(--surface)"/>
+            <stop id="cloud-bottom" offset="1" stop-color="var(--cloud)"/>
+          </linearGradient>
+          <filter id="soft-shadow" x="-35%" y="-35%" width="170%" height="180%">
+            <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="var(--fg)" flood-opacity=".14"/>
+          </filter>
+          <filter id="sun-glow" x="-65%" y="-65%" width="230%" height="230%">
+            <feGaussianBlur stdDeviation="10"/>
+          </filter>
+          <marker id="cycle-tip" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M2 1 L11 6 L2 11" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+          <marker id="air-tip" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="3" markerHeight="3" orient="auto">
+            <path d="M2 2 L8 6 L2 10" fill="none" stroke="var(--surface)" stroke-width="2.5" stroke-linecap="round"/>
+          </marker>
+          <clipPath id="scene-clip"><rect width="1000" height="580"/></clipPath>
+        </defs>
+        <g clip-path="url(#scene-clip)">
+          <rect width="1000" height="580" fill="url(#sky-gradient)"/>
+          <rect id="cool-sky" width="1000" height="580" fill="var(--green)" opacity="0"/>
+          <g id="sun" filter="url(#soft-shadow)">
+            <circle cx="129" cy="145" r="79" fill="var(--yellow)" opacity=".45" filter="url(#sun-glow)"/>
+            <g id="sun-rays" stroke="var(--yellow)" stroke-width="10" stroke-linecap="round">
+              <path d="M129 54v15 M129 222v15 M38 145h15 M205 145h15 M64 80l11 11 M183 199l11 11 M64 210l11-11 M183 91l11-11"/>
+            </g>
+            <circle cx="129" cy="145" r="53" fill="url(#sun-gradient)"/>
+            <path d="M96 127 Q106 108 124 106" fill="none" stroke="var(--surface)" stroke-width="9" opacity=".65" stroke-linecap="round"/>
+          </g>
+          <g id="distant-clouds" fill="var(--surface)" opacity=".35">
+            <path d="M350 150c-30 0-29-37-7-39 3-30 48-34 61-9 30-16 54 4 53 24 28 1 25 24 3 24Z"/>
+            <path d="M802 137c-20 0-25-26-5-33 5-25 38-28 49-7 23-9 45 7 44 21 23 5 16 19 1 19Z"/>
+          </g>
+          <g id="landscape">
+            <path d="M460 414 Q534 324 581 342 Q617 279 655 305 Q704 211 742 259 Q778 290 798 316 Q841 261 869 306 Q915 346 1000 320 L1000 520 L420 520Z" fill="var(--green)"/>
+            <path id="mountain" class="land" d="M433 462 Q517 420 564 373 Q615 322 655 364 Q707 294 743 331 Q768 355 801 395 Q851 344 890 367 Q937 391 1000 374 L1000 528 L427 528Z"/>
+            <path d="M674 362 Q706 331 728 346 M830 394 Q861 370 882 382" fill="none" stroke="var(--green)" stroke-width="13" stroke-linecap="round" opacity=".8"/>
+            <path d="M450 464 Q632 444 788 450 Q920 451 1000 427 L1000 580 L432 580Z" fill="var(--soil)"/>
+            <path d="M451 462 Q630 445 786 453 Q923 452 1000 428" fill="none" stroke="var(--green)" stroke-width="14" stroke-linecap="round"/>
+            <g id="trees" filter="url(#soft-shadow)">
+              <g transform="translate(838 327)">
+                <path d="M0 70v-44" stroke="var(--soil)" stroke-width="12" stroke-linecap="round"/>
+                <path d="M-28 42 Q-37 28-20 11 Q-27-5-8-14 Q8-29 23-8 Q43-1 34 17 Q49 37 26 47Z" fill="var(--land-wet)"/>
+                <path d="M-17 9Q-8-7 3-7" stroke="var(--green)" stroke-width="7" fill="none" stroke-linecap="round"/>
+              </g>
+              <g transform="translate(924 371) scale(.8)">
+                <path d="M0 64v-40" stroke="var(--soil)" stroke-width="12" stroke-linecap="round"/>
+                <path d="M-27 35 Q-40 14-19 4 Q-14-19 7-15 Q28-21 32 4 Q49 24 25 40Z" fill="var(--land-wet)"/>
+              </g>
+              <g transform="translate(610 389) scale(.65)">
+                <path d="M0 66V22" stroke="var(--soil)" stroke-width="12" stroke-linecap="round"/>
+                <path d="M-27 38 Q-36 13-18 3 Q-15-19 5-18 Q28-20 32 5 Q49 28 23 42Z" fill="var(--land-wet)"/>
+              </g>
+            </g>
+          </g>
+          <g id="sea">
+            <path d="M0 423 Q103 411 188 424 Q283 415 360 430 Q412 428 474 460 L438 580 H0Z" fill="url(#sea-gradient)"/>
+            <path d="M0 424 Q102 414 186 426 Q284 417 360 432 Q413 430 466 459" fill="none" stroke="var(--blue)" stroke-width="9"/>
+            <g id="sea-waves" stroke="var(--blue)" stroke-width="6" opacity=".75" stroke-linecap="round" fill="none">
+              <path d="M42 469q23 10 45 0 M168 459q23 10 45 0 M270 482q23 10 45 0 M91 513q23 10 45 0 M332 525q23 10 45 0"/>
+            </g>
+          </g>
+          <g id="flow" opacity="0">
+            <path id="stream-shadow" d="M791 385 C770 403 748 395 726 414 S698 441 648 443 S600 463 573 466 S516 481 475 473 S451 465 424 470" fill="none" stroke="var(--fg)" stroke-width="22" opacity=".12" stroke-linecap="round"/>
+            <path id="stream-path" class="stream" stroke-width="17" d="M791 379 C770 397 748 389 726 408 S698 435 648 437 S600 457 573 460 S516 475 475 467 S451 459 424 464"/>
+            <path id="stream-shine" d="M791 379 C770 397 748 389 726 408 S698 435 648 437 S600 457 573 460 S516 475 475 467 S451 459 424 464" fill="none" stroke="var(--blue)" stroke-width="5" stroke-linecap="round"/>
+            <path id="ground-path" d="M855 439 Q853 475 817 489 Q716 517 615 518 Q521 522 431 523" fill="none" stroke="var(--water)" stroke-width="6" stroke-linecap="round" stroke-dasharray="8 12"/>
+            <g id="infiltration" fill="none" stroke="var(--water)" stroke-width="5" stroke-linecap="round">
+              <path d="M850 437v30m-8-8 8 8 8-8 M884 436v26m-8-8 8 8 8-8"/>
+            </g>
+            <ellipse id="return-ripple" cx="425" cy="466" rx="26" ry="8" fill="none" stroke="var(--blue)" stroke-width="5"/>
+          </g>
+          <g id="cycle" opacity="0">
+            <path class="cycle-line" marker-end="url(#cycle-tip)" d="M251 382 C256 305 308 216 439 184"/>
+            <path class="cycle-line" marker-end="url(#cycle-tip)" d="M464 178 Q573 132 671 181"/>
+            <path class="cycle-line" marker-end="url(#cycle-tip)" d="M841 208 Q932 256 899 331"/>
+            <path class="cycle-line" marker-end="url(#cycle-tip)" d="M810 507 Q655 556 495 539"/>
+            <path class="cycle-line" marker-end="url(#cycle-tip)" d="M393 527 Q277 530 247 468"/>
+          </g>
+          <g id="vapour-particles">
+            <circle class="vapour" cx="125" cy="420" r="11"/>
+            <circle class="vapour" cx="176" cy="419" r="8"/>
+            <circle class="vapour" cx="226" cy="425" r="12"/>
+            <circle class="vapour" cx="280" cy="422" r="9"/>
+            <circle class="vapour" cx="320" cy="428" r="10"/>
+            <circle class="vapour" cx="370" cy="434" r="8"/>
+          </g>
+          <g id="air-arrows">
+            <path class="air-arrow" marker-end="url(#air-tip)" d="M169 378 C140 338 186 316 164 278"/>
+            <path class="air-arrow" marker-end="url(#air-tip)" d="M262 385 C239 344 282 316 260 274"/>
+            <path class="air-arrow" marker-end="url(#air-tip)" d="M352 391 C329 349 370 322 349 282"/>
+          </g>
+          <g id="condensing-dots" fill="var(--surface)" stroke="var(--water)" stroke-width="2">
+            <circle cx="483" cy="204" r="6"/><circle cx="561" cy="175" r="7"/>
+            <circle cx="713" cy="169" r="6"/><circle cx="851" cy="190" r="7"/>
+          </g>
+          <g id="clouds" filter="url(#soft-shadow)">
+            <g class="cloud" id="cloud-left">
+              <path d="M516 235 C476 235 471 192 504 179 C503 141 552 130 575 155 C602 127 645 153 640 182 C673 185 675 234 641 235Z" fill="url(#cloud-gradient)"/>
+              <path d="M517 176 Q531 151 554 159" stroke="var(--surface)" stroke-width="9" fill="none" opacity=".6" stroke-linecap="round"/>
+            </g>
+            <g class="cloud" id="cloud-right">
+              <path d="M688 251 C646 251 641 208 674 197 C665 153 722 136 747 166 C784 133 830 160 830 193 C873 191 882 248 841 251Z" fill="url(#cloud-gradient)"/>
+              <path d="M686 189 Q699 163 720 174" stroke="var(--surface)" stroke-width="10" fill="none" opacity=".6" stroke-linecap="round"/>
+            </g>
+          </g>
+          <g id="rain" opacity="0"></g>
+          <g id="splashes" fill="none" stroke="var(--water)" stroke-width="4" stroke-linecap="round" opacity="0">
+            <path class="splash" d="M669 381l-9-8m15 7 7-8m-13 10h10"/>
+            <path class="splash" d="M735 342l-9-8m15 7 7-8m-13 10h10"/>
+            <path class="splash" d="M792 389l-9-8m15 7 7-8m-13 10h10"/>
+            <path class="splash" d="M879 376l-9-8m15 7 7-8m-13 10h10"/>
+          </g>
+        </g>
+      </svg>
+      <div class="scene-heading">
+        <h2 id="phase-title">蒸發</h2>
+        <div class="english" id="phase-english">Evaporation</div>
+      </div>
+      <div class="scene-note">
+        <span id="focus-note">水蒸氣不可見；氣泡及箭頭是示意。</span>
+        <span>示意圖，比例不準確</span>
+      </div>
+    </main>
+    <aside id="controls" class="card" aria-label="控制面板">
+      <h2 class="panel-title">水滴的四站旅程</h2>
+      <ol class="process-list">
+        <li class="active"><span class="number">1</span>蒸發</li>
+        <li><span class="number">2</span>凝結</li>
+        <li><span class="number">3</span>降水</li>
+        <li><span class="number">4</span>收集</li>
+      </ol>
+      <div id="replay-slot"></div>
+      <p class="teacher-note" id="teacher-note"><strong>留意：</strong>水蒸氣是看不見的氣體。半透明氣泡和箭頭只用來表示上升方向。</p>
+      <p class="keyboard-note">← → 換步驟<br>空白鍵 暫停／播放</p>
+    </aside>
+  </div>
+  <footer id="caption" aria-live="polite">
+    <button class="btn" id="prev-btn" type="button">← 上一步</button>
+    <div class="text" id="caption-text"></div>
+    <span id="step-indicator"></span>
+    <button class="btn primary" id="next-btn" type="button">下一步 →</button>
+  </footer>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  /* Standalone adapter is used only when the host has not supplied its Viz kit. */
+  if (!window.Viz) {
+    const resetHandlers = [], resizeHandlers = [], loopHandlers = [];
+    let registered = [], index = 0, paused = false, elapsed = 0, last = 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function render(direction) {
+      if (!registered.length) return;
+      document.getElementById('caption-text').textContent = registered[index].caption;
+      document.getElementById('step-indicator').textContent = '步驟 ' + (index + 1) + ' / ' + registered.length;
+      document.getElementById('prev-btn').disabled = index === 0;
+      document.getElementById('next-btn').disabled = index === registered.length - 1;
+      registered[index].show(direction);
+    }
+    function move(direction) {
+      const next = Math.max(0, Math.min(registered.length - 1, index + direction));
+      if (next !== index) { index = next; render(direction); }
+    }
+    function reset() {
+      paused = false;
+      if (window.gsap) gsap.globalTimeline.resume();
+      resetHandlers.forEach(fn => fn());
+      index = 0; render(-1);
+    }
+    function fullscreen() {
+      try {
+        const result = document.fullscreenElement
+          ? document.exitFullscreen()
+          : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+        if (result && result.catch) result.catch(function () {});
+      } catch (_) {}
+    }
+    document.getElementById('prev-btn').addEventListener('click', () => move(-1));
+    document.getElementById('next-btn').addEventListener('click', () => move(1));
+    document.getElementById('reset-btn').addEventListener('click', reset);
+    document.getElementById('fullscreen-btn').addEventListener('click', fullscreen);
+    document.addEventListener('keydown', function (event) {
+      if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+      if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
+      if (event.key.toLowerCase() === 'r') reset();
+      if (event.key.toLowerCase() === 'f') fullscreen();
+      if (event.code === 'Space') {
+        event.preventDefault(); paused = !paused;
+        if (window.gsap) paused ? gsap.globalTimeline.pause() : gsap.globalTimeline.resume();
+      }
+    });
+    window.addEventListener('resize', () => resizeHandlers.forEach(fn => fn()));
+    document.addEventListener('visibilitychange', () => { last = 0; });
+    function frame(time) {
+      const dt = last ? Math.min((time - last) / 1000, .05) : 0;
+      last = time;
+      if (!document.hidden && !paused) {
+        elapsed += dt;
+        loopHandlers.forEach(fn => fn(dt, elapsed));
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    window.Viz = {
+      reducedMotion: reduced,
+      duration: seconds => reduced ? 0 : seconds,
+      steps: data => { registered = data; index = 0; render(1); },
+      button: (label, fn, primary) => {
+        const button = document.createElement('button');
+        button.className = 'btn' + (primary ? ' primary' : '');
+        button.type = 'button'; button.textContent = label;
+        button.addEventListener('click', fn);
+        document.getElementById('controls').appendChild(button);
+        return button;
+      },
+      onReset: fn => resetHandlers.push(fn),
+      loop: fn => loopHandlers.push(fn),
+      onResize: fn => resizeHandlers.push(fn),
+      stage: () => document.getElementById('stage'),
+      size: () => {
+        const rect = document.getElementById('stage').getBoundingClientRect();
+        return { width: rect.width, height: rect.height };
+      },
+      color: name => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    };
+  }
+  const kit = window.Viz;
+  const hasGSAP = !!window.gsap;
+  if (hasGSAP) gsap.registerPlugin(Draggable, MotionPathPlugin);
+  const $ = id => document.getElementById(id);
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const duration = seconds => kit.duration(seconds);
+  const labels = [
+    ['蒸發', 'Evaporation'],
+    ['凝結', 'Condensation'],
+    ['降水', 'Precipitation'],
+    ['收集', 'Collection']
+  ];
+  const captions = [
+    '太陽照射海洋，水受熱變成看不見的水蒸氣上升。',
+    '水蒸氣在高空遇冷，聚集凝結成微小水滴並形成雲。',
+    '雲裡的水滴越來越多、變重，化成雨水降落地面。',
+    '雨水流入小溪與地底，匯集流回大海，重新開始！'
+  ];
+  const focusNotes = [
+    '水蒸氣不可見；氣泡及箭頭是示意。',
+    '雲是由微小水滴組成的。',
+    '水滴變大、變重，雨水向下落。',
+    '地表逕流＋地下水 → 大海'
+  ];
+  const notes = [
+    '<strong>留意：</strong>水蒸氣是看不見的氣體。半透明氣泡和箭頭只用來表示上升方向。',
+    '<strong>留意：</strong>水蒸氣遇冷，凝結成微小水滴。看得見的雲不是水蒸氣。',
+    '<strong>留意：</strong>微小水滴聚合、變大；當雲中氣流無法托住水滴，便形成降雨。',
+    '<strong>留意：</strong>收集包括地表逕流及地下水滲透；山溪流入大海是直觀示意。'
+  ];
+  let current = 0, master = null, navigationTween = null, rainTime = 0;
+  const rainDrops = [];
+  const ns = 'http://www.w3.org/2000/svg';
+  for (let i = 0; i < 24; i++) {
+    const drop = document.createElementNS(ns, 'path');
+    drop.setAttribute('class', 'rain-drop');
+    drop.setAttribute('d', 'M0 -9 C-2 -5-5-1-5 2 A5 5 0 0 0 5 2 C5-1 2-5 0-9Z');
+    $('rain').appendChild(drop);
+    const x = 647 + (i % 12) * 19;
+    const endY = x < 697 ? 382 - (x - 647) * .5
+      : x < 751 ? 352 - (x - 697) * .35
+      : x < 810 ? 347 + (x - 751) * .75 : 390 - (x - 810) * .22;
+    rainDrops.push({ el: drop, x, endY, offset: i / 24 });
+  }
+
+  function drawRain(time, still) {
+    rainDrops.forEach(function (drop) {
+      const p = still ? (drop.offset * 1.7) % 1 : ((time / 1.2 + drop.offset) % 1);
+      const y = 239 + (drop.endY - 239) * p;
+      drop.el.setAttribute('transform', 'translate(' + drop.x + ' ' + y + ')');
+      drop.el.setAttribute('opacity', p < .09 ? p / .09 : p > .92 ? (1 - p) / .08 : 1);
+    });
+    document.querySelectorAll('.splash').forEach(function (splash, i) {
+      splash.setAttribute('opacity', still ? .8 : Math.max(0, Math.sin(time / 1.2 * Math.PI * 2 + i * 1.7)));
+    });
+  }
+  const streamLength = $('stream-path').getTotalLength();
+  const groundLength = $('ground-path').getTotalLength();
+
+  function baseline(timeline, position) {
+    const set = (targets, values) => timeline.set(targets, values, position);
+    set('#sun', { scale: 1, opacity: .35, svgOrigin: '129 145' });
+    set('#sun-rays', { opacity: .65 });
+    set('#landscape', { opacity: .35 });
+    set('#sea', { opacity: .35 });
+    set('#mountain', { fill: css('--land') });
+    set('#trees', { opacity: 1 });
+    set('#distant-clouds', { opacity: .35 });
+    set('#cool-sky', { opacity: 0 });
+    set('#clouds', { opacity: 1, y: 0, x: 0 });
+    set('#cloud-left', { scale: 1, opacity: 0, x: 0, y: 0, svgOrigin: '574 190' });
+    set('#cloud-right', { scale: 1, opacity: 0, x: 0, y: 0, svgOrigin: '758 203' });
+    set('#cloud-top', { attr: { 'stop-color': css('--surface') } });
+    set('#cloud-bottom', { attr: { 'stop-color': css('--cloud') } });
+    set('.vapour', { y: 0, scale: 1, opacity: 0, transformOrigin: 'center bottom' });
+    set('#air-arrows', { opacity: 0, y: 0 });
+    set('#condensing-dots', { opacity: 0, scale: 1, svgOrigin: '666 193' });
+    set('#rain, #splashes, #cycle, #flow', { opacity: 0 });
+    set('#stream-path, #stream-shine, #stream-shadow', {
+      strokeDasharray: streamLength,
+      strokeDashoffset: streamLength,
+      transformOrigin: 'right top'
+    });
+    set('#ground-path', { strokeDasharray: groundLength, strokeDashoffset: groundLength });
+    set('#infiltration', { opacity: 0 });
+    set('#return-ripple', { opacity: 0, scale: .3, svgOrigin: '425 466' });
+    set('#sea-waves', { x: 0, opacity: .75 });
+  }
+
+  if (hasGSAP) {
+    master = gsap.timeline({ paused: true });
+    const lengths = [1.6, 1.4, 1.2, 2.0];
+    let time = 0;
+    for (let i = 0; i < 4; i++) {
+      const start = time;
+      const d = duration(lengths[i]);
+      master.addLabel('step' + i + '-start', start);
+      baseline(master, start);
+      if (i === 0) {
+        master.set('#sun, #sea', { opacity: 1 }, start);
+        master.set('.vapour', { opacity: .2 }, start);
+        master.to('.vapour', { y: -191, opacity: 0, duration: d, ease: 'power2.out' }, start);
+        master.to('#air-arrows', { opacity: .8, y: -45, duration: d * .55, ease: 'power2.out' }, start);
+        master.to('#air-arrows', { opacity: .22, duration: d * .45 }, start + d * .55);
+        master.to('#sun', { scale: 1.1, duration: d * .5, ease: 'sine.inOut' }, start);
+        master.to('#sun', { scale: 1, duration: d * .5, ease: 'sine.inOut' }, start + d * .5);
+        master.to('#sea-waves', { x: 12, duration: d, ease: 'sine.inOut' }, start);
+        master.to('#distant-clouds', { opacity: .15, duration: d }, start);
+      } else if (i === 1) {
+        master.set('#air-arrows', { opacity: .16, y: -45 }, start);
+        master.set('#cloud-left', { scale: .3, x: -160, opacity: 0 }, start);
+        master.set('#cloud-right', { scale: .3, x: 135, opacity: 0 }, start);
+        master.set('#condensing-dots', { opacity: .6, scale: 1.25 }, start);
+        master.to('.cloud', { scale: 1, x: 0, opacity: 1, duration: d, ease: 'elastic.out(1, 0.5)' }, start);
+        master.to('#condensing-dots', { scale: .6, opacity: 0, duration: d * .8, ease: 'power2.out' }, start);
+        master.to('#cool-sky', { opacity: .28, duration: d, ease: 'sine.inOut' }, start);
+        master.to('#air-arrows', { opacity: .07, duration: d }, start);
+      } else if (i === 2) {
+        master.set('.cloud', { opacity: 1 }, start);
+        master.set('#cool-sky', { opacity: .28 }, start);
+        master.set('#landscape', { opacity: 1 }, start);
+        master.set('#cloud-top', { attr: { 'stop-color': css('--cloud') } }, start);
+        master.set('#cloud-bottom', { attr: { 'stop-color': css('--cloud-dark') } }, start);
+        master.set('#mountain', { fill: css('--land-wet') }, start);
+        master.to('#clouds', { y: 10, duration: duration(.2), ease: 'power1.out' }, start);
+        master.to('#clouds', { x: 2, duration: duration(.08), repeat: 3, yoyo: true, ease: 'none' }, start);
+        master.set('#rain, #splashes', { opacity: 1 }, start);
+        master.to({}, { duration: d }, start);
+      } else {
+        master.set('.cloud', { opacity: .35 }, start);
+        master.set('#cool-sky', { opacity: .18 }, start);
+        master.set('#landscape', { opacity: .35 }, start);
+        master.set('#sea', { opacity: 1 }, start);
+        master.set('#flow', { opacity: 1 }, start);
+        master.to('#stream-path, #stream-shine, #stream-shadow', { strokeDashoffset: 0, duration: d, ease: 'power2.inOut' }, start);
+        master.to('#ground-path', { strokeDashoffset: 0, duration: d, ease: 'power2.inOut' }, start);
+        master.to('#infiltration', { opacity: .9, duration: duration(.6) }, start);
+        master.to('#return-ripple', { opacity: .9, scale: 1.2, duration: duration(.4), ease: 'sine.out' }, start + d * .8);
+        master.to('#cycle', { opacity: .9, duration: duration(.4), ease: 'sine.out' }, start + d * .8);
+      }
+      time += Math.max(d, .001);
+      master.addLabel('step' + i + '-end', time);
+      time += .01;
+    }
+  }
+
+  function staticState(index) {
+    $('sun').setAttribute('opacity', index === 0 ? '1' : '.35');
+    $('landscape').setAttribute('opacity', index === 2 ? '1' : '.35');
+    $('sea').setAttribute('opacity', index === 0 || index === 3 ? '1' : '.35');
+    $('cloud-left').setAttribute('opacity', index === 0 ? '0' : index === 3 ? '.35' : '1');
+    $('cloud-right').setAttribute('opacity', index === 0 ? '0' : index === 3 ? '.35' : '1');
+    $('rain').setAttribute('opacity', index === 2 ? '1' : '0');
+    $('splashes').setAttribute('opacity', index === 2 ? '1' : '0');
+    $('flow').setAttribute('opacity', index === 3 ? '1' : '0');
+    $('cycle').setAttribute('opacity', index === 3 ? '.9' : '0');
+    $('air-arrows').setAttribute('opacity', index === 0 ? '.5' : '0');
+    $('vapour-particles').setAttribute('opacity', '0');
+    $('condensing-dots').setAttribute('opacity', '0');
+    drawRain(0, true);
+  }
+
+  function show(index) {
+    current = index;
+    rainTime = 0;
+    $('phase-title').textContent = labels[index][0];
+    $('phase-english').textContent = labels[index][1];
+    $('phase-title').setAttribute('aria-label', labels[index][0] + ' (' + labels[index][1] + ')');
+    $('focus-note').textContent = focusNotes[index];
+    $('teacher-note').innerHTML = notes[index];
+    document.querySelectorAll('.process-list li').forEach((li, i) => {
+      li.classList.toggle('active', i === index);
+      if (i === index) li.setAttribute('aria-current', 'step');
+      else li.removeAttribute('aria-current');
+    });
+    if (!master) { staticState(index); return; }
+    if (navigationTween) navigationTween.kill();
+    master.pause();
+    const start = master.labels['step' + index + '-start'];
+    const end = master.labels['step' + index + '-end'];
+    /* Seek beyond the zero-duration setup to reconstruct the entire selected state. */
+    master.seek(start + .000001, false);
+    drawRain(0, !!kit.reducedMotion);
+    if (kit.reducedMotion) {
+      master.seek(end, false);
+      drawRain(0, true);
+    } else {
+      navigationTween = master.tweenTo('step' + index + '-end', {
+        duration: duration(end - start),
+        ease: 'none'
+      });
+    }
+  }
+
+  const replayButton = kit.button('↻ 重播這一步', function () { show(current); }, true);
+  const replayElement = replayButton && replayButton.nodeType ? replayButton : null;
+  if (replayElement) $('replay-slot').appendChild(replayElement);
+  kit.onReset(function () {
+    if (navigationTween) navigationTween.kill();
+    if (master) master.pause();
+    current = 0; rainTime = 0;
+  });
+  kit.loop(function (dt) {
+    if (current !== 2 || kit.reducedMotion) return;
+    rainTime += dt;
+    drawRain(rainTime, false);
+  });
+  kit.steps(captions.map(function (caption, index) {
+    return { caption: caption, show: function () { show(index); } };
+  }));
+});
+</script>
+</body>
+</html>

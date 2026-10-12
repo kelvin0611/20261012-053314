@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>探索太陽系八大行星</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    --bg: #120E26;
+    --fg: #FFFFFF;
+    --muted: #D9D4EE;
+    --surface: rgba(255,255,255,.10);
+    --border: rgba(255,255,255,.28);
+    --accent: #B79CFF;
+    --accent-fg: #191136;
+    --ok: #8BE8C0;
+    --warn: #FFA893;
+    --palette: #B79CFF, #7FE6E0, #FFD27F, #FF8FB1, #8BE8C0;
+    --radius: 18px;
+    --shadow: 0 20px 50px rgba(9,4,24,.45),inset 0 1px 0 rgba(255,255,255,.28);
+    --font-display: 'Plus Jakarta Sans','Noto Sans TC',sans-serif;
+    --font-body: 'Plus Jakarta Sans','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+    --sun: #ff9c55;
+    --mercury: #c8c2cc;
+    --venus: #ffc777;
+    --earth: #60cfff;
+    --mars: #ff806d;
+    --jupiter: #eab889;
+    --saturn: #f4d58d;
+    --uranus: #89e8df;
+    --neptune: #769cff;
+    --deep-glass: rgba(17,12,39,.84);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  #stage { position: relative; min-height: 0; overflow: hidden; background: var(--surface); }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  #controls { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  label { font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  /* explorer: title, one large stage, control dock along the bottom */
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+  #stage { margin: 0 calc(var(--gap) * 1.5); }
+  #controls { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; margin: var(--gap) calc(var(--gap) * 1.5); }
+
+  .topbar { padding-top: 14px; padding-bottom: 14px; }
+  .topbar h1 { letter-spacing: -.03em; }
+  .topbar .goal { margin-top: 4px; }
+  #stage {
+    isolation: isolate;
+    border-radius: calc(var(--radius) + 5px);
+    background:
+      radial-gradient(ellipse at 50% 46%, rgba(77,54,122,.34), transparent 56%),
+      radial-gradient(ellipse at 12% 10%, rgba(67,72,134,.14), transparent 38%),
+      var(--bg);
+  }
+  #scene-canvas, #labels-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #scene-canvas { z-index: 0; display: block; }
+  #labels-layer { z-index: 1; pointer-events: none; overflow: hidden; }
+  .sun-label, .planet-label {
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(18,14,38,.76);
+    color: var(--fg);
+    font: 700 18px/1.25 var(--font-body);
+    white-space: nowrap;
+    box-shadow: 0 5px 20px rgba(0,0,0,.25);
+  }
+  .sun-label { color: var(--sun); border-color: rgba(255,156,85,.55); }
+  .planet-label.is-selected { color: var(--fg); border-color: var(--earth); box-shadow: 0 0 20px rgba(127,230,224,.55); }
+  .stage-kicker, .orbit-note, .disclaimer, .order-strip, .info-card {
+    position: absolute;
+    z-index: 3;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: var(--deep-glass);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .stage-kicker {
+    top: 18px;
+    left: 20px;
+    padding: 9px 15px;
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1.25;
+  }
+  .stage-kicker strong { color: var(--fg); }
+  .orbit-note {
+    left: 20px;
+    top: 68px;
+    padding: 7px 12px;
+    border-radius: 12px;
+    color: var(--muted);
+    font-size: 17px;
+  }
+  .orbit-swatch { display: inline-block; width: 20px; border-top: 2px solid var(--accent); margin: 0 7px 5px 0; opacity: .9; }
+  .info-card {
+    top: 18px;
+    right: 20px;
+    width: min(330px, 31%);
+    min-width: 260px;
+    padding: 17px 19px 18px;
+    border-radius: var(--radius);
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    transform-origin: center;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .info-card.hidden { opacity: 0; transform: translateX(42px) scale(.8); pointer-events: none; }
+  .info-eyebrow { color: var(--accent); font-size: 16px; font-weight: 700; letter-spacing: .06em; }
+  .info-card h2 { margin: 2px 0 5px; font-size: 28px; line-height: 1.25; }
+  .info-card h2 span { color: var(--muted); font-size: 17px; font-weight: 500; white-space: nowrap; }
+  .info-card p { margin: 6px 0 0; font-size: 19px; line-height: 1.45; color: var(--muted); }
+  .order-strip {
+    left: 20px;
+    right: 20px;
+    bottom: 51px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(5px, 1.25vw, 17px);
+    padding: 7px 11px;
+    border-radius: 14px;
+    color: var(--muted);
+    font-size: clamp(13px, 1.25vw, 17px);
+    line-height: 1.3;
+  }
+  .order-title { color: var(--fg); font-weight: 700; white-space: nowrap; }
+  .order-item { white-space: nowrap; }
+  .order-item b { color: var(--accent); margin-right: 3px; }
+  .disclaimer {
+    left: 20px;
+    bottom: 12px;
+    padding: 5px 10px;
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  #controls {
+    min-height: 82px;
+    padding: 10px 16px;
+    gap: 12px;
+    border-radius: var(--radius);
+    overflow: visible;
+  }
+  #controls .btn { min-height: 56px; }
+  .control-label { display: flex; align-items: center; gap: 10px; color: var(--fg); font-size: 19px; white-space: nowrap; }
+  .speed-control { display: flex; flex-direction: column; justify-content: center; width: min(280px, 25vw); min-width: 220px; gap: 1px; }
+  .speed-line { display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
+  .speed-line output { color: var(--accent); font-weight: 700; }
+  .speed-control input { margin: 0; height: 24px; cursor: pointer; }
+  .play-indicator { display: inline-flex; align-items: center; gap: 9px; }
+  .play-indicator::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 12px var(--ok); }
+  .play-indicator.paused::before { background: var(--warn); box-shadow: 0 0 12px var(--warn); }
+  #fullscreen-btn { white-space: nowrap; }
+  .error-message { position: absolute; inset: 0; display: grid; place-items: center; padding: 28px; color: var(--muted); text-align: center; z-index: 8; }
+
+  @media (max-width: 900px) {
+    .topbar { gap: 10px; }
+    .topbar .goal { font-size: 17px; }
+    .topbar .btn { padding: 8px 13px; font-size: 17px; }
+    .info-card { min-width: 235px; width: 33%; padding: 13px 14px; }
+    .info-card p { font-size: 17px; }
+    .order-strip { left: 12px; right: 12px; gap: 7px; }
+    #controls { gap: 8px; }
+    #controls .btn { padding: 8px 15px; font-size: 18px; }
+  }
+  @media (max-width: 680px) {
+    body { grid-template-rows: auto minmax(0,1fr) auto; }
+    .topbar { padding: 10px 12px; }
+    .topbar h1 { font-size: 25px; }
+    .topbar .goal { display: none; }
+    .topbar .spacer { flex: 1; }
+    .topbar .btn { min-height: 48px; padding: 6px 10px; font-size: 15px; }
+    #stage { margin: 0 10px; }
+    .stage-kicker { top: 10px; left: 10px; padding: 7px 10px; font-size: 15px; }
+    .orbit-note { top: 50px; left: 10px; font-size: 14px; }
+    .info-card { top: 10px; right: 10px; width: 45%; min-width: 0; padding: 10px; }
+    .info-card h2 { font-size: 20px; }
+    .info-card h2 span { display: block; font-size: 13px; }
+    .info-card p { font-size: 15px; }
+    .info-eyebrow { font-size: 13px; }
+    .order-strip { left: 8px; right: 8px; bottom: 45px; flex-wrap: wrap; gap: 3px 8px; font-size: 12px; padding: 6px; }
+    .order-title { display: none; }
+    .disclaimer { left: 8px; bottom: 8px; font-size: 11px; }
+    #controls { margin: 8px 10px 10px; padding: 7px; gap: 6px; min-height: 0; }
+    #controls .btn { min-height: 48px; padding: 5px 10px; font-size: 15px; }
+    .speed-control { min-width: 160px; width: 42vw; }
+    .speed-line { font-size: 14px; }
+  }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>探索太陽系八大行星</h1>
+      <p class="goal">認識太陽系八大行星按距日遠近的排列次序與繞日公轉特點</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="reset-btn" type="button">↺ 重新開始</button>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  <main id="stage" class="card" aria-label="太陽系八大行星立體演示">
+    <canvas id="scene-canvas" aria-label="可旋轉及縮放的太陽系立體模型"></canvas>
+    <div id="labels-layer" aria-hidden="true"></div>
+    <div class="stage-kicker"><strong>立體太陽系</strong>　拖曳旋轉・滾動縮放</div>
+    <div class="orbit-note"><span class="orbit-swatch"></span>公轉軌道 (Orbit)</div>
+    <aside class="info-card" id="info-card" aria-live="polite">
+      <div class="info-eyebrow" id="info-eyebrow">點選行星探索</div>
+      <h2 id="info-name">八大行星 <span>Solar System</span></h2>
+      <p id="info-fact">點選任意行星，看看它距離太陽的次序和有趣特點。</p>
+    </aside>
+    <div class="order-strip" aria-label="行星距日排列次序">
+      <span class="order-title">由近至遠</span>
+      <span class="order-item"><b>1</b>水星</span>
+      <span class="order-item"><b>2</b>金星</span>
+      <span class="order-item"><b>3</b>地球</span>
+      <span class="order-item"><b>4</b>火星</span>
+      <span class="order-item"><b>5</b>木星</span>
+      <span class="order-item"><b>6</b>土星</span>
+      <span class="order-item"><b>7</b>天王星</span>
+      <span class="order-item"><b>8</b>海王星</span>
+    </div>
+    <div class="disclaimer">示意圖：天體大小與軌道間距並非真實比例</div>
+  </main>
+  <div id="controls" class="card" aria-label="控制面板">
+    <button class="btn primary" id="play-btn" type="button"><span class="play-indicator" id="play-indicator">暫停公轉</span></button>
+    <div class="speed-control">
+      <div class="speed-line"><label for="speed-slider">公轉速度</label><output id="speed-output" for="speed-slider">1×</output></div>
+      <input id="speed-slider" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="公轉速度">
+    </div>
+    <button class="btn" id="overview-btn" type="button">全景重設</button>
+  </div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+
+const stage = document.getElementById("stage");
+const canvas = document.getElementById("scene-canvas");
+const labelLayer = document.getElementById("labels-layer");
+const infoCard = document.getElementById("info-card");
+const infoEyebrow = document.getElementById("info-eyebrow");
+const infoName = document.getElementById("info-name");
+const infoFact = document.getElementById("info-fact");
+const playButton = document.getElementById("play-btn");
+const playIndicator = document.getElementById("play-indicator");
+const speedSlider = document.getElementById("speed-slider");
+const speedOutput = document.getElementById("speed-output");
+const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const duration = seconds => {
+  try { return window.Viz && typeof window.Viz.duration === "function" ? window.Viz.duration(seconds) : (reducedMotion ? 0 : seconds); }
+  catch (_) { return reducedMotion ? 0 : seconds; }
+};
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const threeColor = name => new THREE.Color(css(name));
+
+if (window.gsap && window.Draggable && window.MotionPathPlugin) {
+  try { window.gsap.registerPlugin(window.Draggable, window.MotionPathPlugin); } catch (_) {}
+}
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#100b24");
+scene.fog = new THREE.FogExp2("#100b24", 0.0017);
+
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+const overviewPosition = new THREE.Vector3(0, 56.6, 56.6);
+camera.position.copy(overviewPosition);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.id = "labels-renderer";
+labelRenderer.domElement.style.position = "absolute";
+labelRenderer.domElement.style.inset = "0";
+labelRenderer.domElement.style.pointerEvents = "none";
+labelRenderer.domElement.style.zIndex = "1";
+labelLayer.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.065;
+controls.enablePan = true;
+controls.minDistance = 18;
+controls.maxDistance = 125;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.target.set(0, 0, 0);
+controls.update();
+
+scene.add(new THREE.AmbientLight("#a2a2d2", 0.75));
+const hemi = new THREE.HemisphereLight("#c3d2ff", "#221638", 0.8);
+scene.add(hemi);
+const sunLight = new THREE.PointLight("#ffd0a2", 1150, 150, 1.4);
+sunLight.position.set(0, 0, 0);
+scene.add(sunLight);
+const fillLight = new THREE.DirectionalLight("#8ab9ff", 1.25);
+fillLight.position.set(-25, 28, 32);
+scene.add(fillLight);
+
+function seededRandom(seed) {
+  let value = seed >>> 0;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+const rand = seededRandom(4821);
+const starPositions = [];
+const starColors = [];
+for (let i = 0; i < 1300; i++) {
+  const radius = 48 + rand() * 98;
+  const theta = rand() * Math.PI * 2;
+  const y = (rand() - 0.45) * 85;
+  starPositions.push(Math.cos(theta) * radius, y, Math.sin(theta) * radius);
+  const shade = 0.38 + rand() * 0.62;
+  starColors.push(0.62 * shade, 0.66 * shade, shade);
+}
+const starGeometry = new THREE.BufferGeometry();
+starGeometry.setAttribute("position", new THREE.Float32BufferAttribute(starPositions, 3));
+starGeometry.setAttribute("color", new THREE.Float32BufferAttribute(starColors, 3));
+const starMaterial = new THREE.PointsMaterial({
+  size: 0.26, vertexColors: true, transparent: true, opacity: 0.76,
+  sizeAttenuation: true, depthWrite: false
+});
+const stars = new THREE.Points(starGeometry, starMaterial);
+scene.add(stars);
+
+const sun = new THREE.Mesh(
+  new THREE.SphereGeometry(2.45, 40, 32),
+  new THREE.MeshStandardMaterial({
+    color: threeColor("--sun"), emissive: threeColor("--sun"),
+    emissiveIntensity: 1.7, roughness: 0.75, metalness: 0
+  })
+);
+scene.add(sun);
+const sunGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(3.05, 32, 24),
+  new THREE.MeshBasicMaterial({ color: threeColor("--sun"), transparent: true, opacity: 0.12, depthWrite: false })
+);
+scene.add(sunGlow);
+const sunHalo = new THREE.Mesh(
+  new THREE.SphereGeometry(4.2, 32, 24),
+  new THREE.MeshBasicMaterial({ color: threeColor("--sun"), transparent: true, opacity: 0.035, depthWrite: false })
+);
+scene.add(sunHalo);
+const sunLabelEl = document.createElement("div");
+sunLabelEl.className = "sun-label";
+sunLabelEl.textContent = "太陽 (Sun)";
+const sunLabel = new CSS2DObject(sunLabelEl);
+sunLabel.position.set(0, 3.5, 0);
+sun.add(sunLabel);
+
+const orbitMaterials = [];
+const planetObjects = [];
+const planetData = [
+  { name: "水星", en: "Mercury", radius: 0.63, orbit: 5.4, color: "--mercury", velocity: 0.42, fact: "最靠近太陽，也是太陽系中最小的行星。", phase: 0.55 },
+  { name: "金星", en: "Venus", radius: 0.92, orbit: 8.3, color: "--venus", velocity: 0.23, fact: "表面非常炎熱，是太陽系中最熱的行星。", phase: 2.5 },
+  { name: "地球", en: "Earth", radius: 1.02, orbit: 11.2, color: "--earth", velocity: 0.14, fact: "我們的家園；目前已知有生命的星球。", phase: 4.1 },
+  { name: "火星", en: "Mars", radius: 0.78, orbit: 14.3, color: "--mars", velocity: 0.085, fact: "因表面氧化鐵呈紅色，常被稱為紅色星球。", phase: 5.2 },
+  { name: "木星", en: "Jupiter", radius: 2.3, orbit: 20.1, color: "--jupiter", velocity: 0.047, fact: "太陽系中最大的行星，表面有巨大的風暴。", phase: 1.1 },
+  { name: "土星", en: "Saturn", radius: 1.9, orbit: 25.6, color: "--saturn", velocity: 0.031, fact: "最著名的是由冰塊和岩石組成的美麗光環。", phase: 3.3 },
+  { name: "天王星", en: "Uranus", radius: 1.45, orbit: 30.4, color: "--uranus", velocity: 0.022, fact: "自轉軸傾斜得很特別，看起來像側躺着旋轉。", phase: 4.8 },
+  { name: "海王星", en: "Neptune", radius: 1.4, orbit: 35.1, color: "--neptune", velocity: 0.016, fact: "距離太陽最遠，表面有非常強勁的風。", phase: 0.05 }
+];
+
+/* setFromPoints expects Vector3 objects, not coordinate arrays. */
+const orbitGeometry = new THREE.BufferGeometry();
+const circlePoints = [];
+for (let i = 0; i <= 240; i++) {
+  const a = (i / 240) * Math.PI * 2;
+  circlePoints.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
+}
+orbitGeometry.setFromPoints(circlePoints);
+planetData.forEach((data, index) => {
+  const material = new THREE.LineBasicMaterial({
+    color: index % 2 === 0 ? threeColor("--accent") : threeColor("--uranus"),
+    transparent: true,
+    opacity: 0.24,
+    depthWrite: false
+  });
+  orbitMaterials.push(material);
+  const orbit = new THREE.LineLoop(orbitGeometry, material);
+  orbit.scale.setScalar(data.orbit);
+  scene.add(orbit);
+});
+
+const sphereGeo = new THREE.SphereGeometry(1, 36, 28);
+planetData.forEach((data, index) => {
+  const group = new THREE.Group();
+  group.rotation.y = data.phase;
+  scene.add(group);
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: threeColor(data.color),
+    roughness: index === 2 ? 0.55 : 0.82,
+    metalness: index === 2 ? 0.08 : 0,
+    emissive: threeColor(data.color),
+    emissiveIntensity: 0.035
+  });
+  const mesh = new THREE.Mesh(sphereGeo, mat);
+  mesh.scale.setScalar(data.radius);
+  mesh.position.x = data.orbit;
+  mesh.userData.planetIndex = index;
+  mesh.userData.baseColor = threeColor(data.color);
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  group.add(mesh);
+
+  if (index === 5) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(data.radius * 1.48, data.radius * 0.22, 3, 80),
+      new THREE.MeshStandardMaterial({ color: threeColor("--saturn"), roughness: 0.8, metalness: 0, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = Math.PI / 2.12;
+    ring.position.copy(mesh.position);
+    group.add(ring);
+    const outerRing = new THREE.Mesh(
+      new THREE.TorusGeometry(data.radius * 1.78, data.radius * 0.06, 3, 90),
+      new THREE.MeshStandardMaterial({ color: threeColor("--venus"), roughness: 0.88, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+    );
+    outerRing.rotation.x = Math.PI / 2.12;
+    outerRing.position.copy(mesh.position);
+    group.add(outerRing);
+  }
+  const labelEl = document.createElement("div");
+  labelEl.className = "planet-label";
+  labelEl.textContent = data.name;
+  labelEl.style.display = "none";
+  const label = new CSS2DObject(labelEl);
+  label.position.set(data.orbit, data.radius + 0.65, 0);
+  group.add(label);
+  planetObjects.push({ data, group, mesh, labelEl });
+});
+
+const focusGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(1.25, 32, 24),
+  new THREE.MeshBasicMaterial({ color: threeColor("--earth"), transparent: true, opacity: 0, depthWrite: false })
+);
+focusGlow.visible = false;
+scene.add(focusGlow);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let selectedIndex = -1;
+let speedFactor = 1;
+let orbitMix = 1;
+let isPlaying = true;
+let lastTime = performance.now();
+let cameraTween = null;
+let focusTargetTween = null;
+let playTween = null;
+
+function setSelected(index) {
+  selectedIndex = index;
+  planetObjects.forEach((p, i) => {
+    p.labelEl.style.display = i === index ? "block" : "none";
+    p.labelEl.classList.toggle("is-selected", i === index);
+  });
+  if (index < 0) {
+    infoEyebrow.textContent = "點選行星探索";
+    infoName.innerHTML = "八大行星 <span>Solar System</span>";
+    infoFact.textContent = "點選任意行星，看看它距離太陽的次序和有趣特點。";
+    infoCard.classList.remove("hidden");
+    focusGlow.visible = false;
+    return;
+  }
+  const planet = planetObjects[index];
+  infoEyebrow.textContent = `距離太陽第 ${index + 1} 位`;
+  infoName.innerHTML = `${planet.data.name} <span>(${planet.data.en})</span>`;
+  infoFact.textContent = planet.data.fact;
+  focusGlow.visible = true;
+}
+
+function tweenCameraToPlanet(index) {
+  const planet = planetObjects[index];
+  const worldPosition = new THREE.Vector3();
+  planet.mesh.getWorldPosition(worldPosition);
+  const viewDirection = camera.position.clone().sub(controls.target).normalize();
+  if (viewDirection.lengthSq() < 0.001) viewDirection.set(0, 1, 1).normalize();
+  const distance = Math.max(17, planet.data.radius * 7.4);
+  const cameraDestination = worldPosition.clone().addScaledVector(viewDirection, distance);
+  const targetState = {
+    px: camera.position.x, py: camera.position.y, pz: camera.position.z,
+    tx: controls.target.x, ty: controls.target.y, tz: controls.target.z
+  };
+  if (cameraTween) cameraTween.kill();
+  if (focusTargetTween) focusTargetTween.kill();
+  const durationSeconds = duration(1.2);
+  const go = () => {
+    cameraTween = window.gsap.to(targetState, {
+      px: cameraDestination.x, py: cameraDestination.y, pz: cameraDestination.z,
+      tx: worldPosition.x, ty: worldPosition.y, tz: worldPosition.z,
+      duration: durationSeconds, ease: "power2.inOut",
+      onUpdate: () => {
+        camera.position.set(targetState.px, targetState.py, targetState.pz);
+        controls.target.set(targetState.tx, targetState.ty, targetState.tz);
+      },
+      onComplete: () => {
+        infoCard.classList.remove("hidden");
+      }
+    });
+  };
+  infoCard.classList.add("hidden");
+  if (window.gsap) go();
+  else {
+    camera.position.copy(cameraDestination);
+    controls.target.copy(worldPosition);
+    infoCard.classList.remove("hidden");
+  }
+}
+
+function selectPlanet(index) {
+  setSelected(index);
+  tweenCameraToPlanet(index);
+}
+
+function resetOverview() {
+  if (cameraTween) cameraTween.kill();
+  if (focusTargetTween) focusTargetTween.kill();
+  if (window.gsap) {
+    const state = {
+      px: camera.position.x, py: camera.position.y, pz: camera.position.z,
+      tx: controls.target.x, ty: controls.target.y, tz: controls.target.z
+    };
+    window.gsap.to(state, {
+      px: overviewPosition.x, py: overviewPosition.y, pz: overviewPosition.z,
+      tx: 0, ty: 0, tz: 0,
+      duration: duration(0.9), ease: "power3.out",
+      onUpdate: () => {
+        camera.position.set(state.px, state.py, state.pz);
+        controls.target.set(state.tx, state.ty, state.tz);
+      }
+    });
+  } else {
+    camera.position.copy(overviewPosition);
+    controls.target.set(0, 0, 0);
+  }
+  setSelected(-1);
+  infoCard.classList.remove("hidden");
+}
+
+function updatePlayUI() {
+  playIndicator.textContent = isPlaying ? "暫停公轉" : "繼續公轉";
+  playIndicator.classList.toggle("paused", !isPlaying);
+}
+function togglePlay() {
+  isPlaying = !isPlaying;
+  updatePlayUI();
+  orbitMaterials.forEach(material => {
+    if (window.gsap) {
+      window.gsap.killTweensOf(material);
+      window.gsap.to(material, {
+        opacity: 0.5, duration: duration(0.12), ease: "power1.out",
+        yoyo: true, repeat: 1,
+        onComplete: () => { material.opacity = 0.24; }
+      });
+    } else {
+      material.opacity = 0.38;
+      setTimeout(() => { material.opacity = 0.24; }, 120);
+    }
+  });
+  if (playTween) playTween.kill();
+  if (window.gsap) {
+    playTween = window.gsap.to({ value: orbitMix }, {
+      value: isPlaying ? 1 : 0,
+      duration: duration(0.3),
+      ease: "power1.out",
+      onUpdate() { orbitMix = this.targets()[0].value; }
+    });
+  } else orbitMix = isPlaying ? 1 : 0;
+}
+
+playButton.addEventListener("click", togglePlay);
+document.getElementById("overview-btn").addEventListener("click", resetOverview);
+document.getElementById("reset-btn").addEventListener("click", () => {
+  resetOverview();
+  if (!isPlaying) togglePlay();
+  speedSlider.value = "1";
+  speedFactor = 1;
+  speedOutput.textContent = "1×";
+});
+speedSlider.addEventListener("input", () => {
+  speedFactor = Number(speedSlider.value);
+  speedOutput.textContent = `${speedFactor.toFixed(1).replace(".0","")}×`;
+});
+
+document.getElementById("fullscreen-btn").addEventListener("click", async () => {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    else await document.exitFullscreen();
+  } catch (_) {}
+});
+document.addEventListener("keydown", event => {
+  if (event.key.toLowerCase() === "f") document.getElementById("fullscreen-btn").click();
+  if (event.key.toLowerCase() === "r") document.getElementById("reset-btn").click();
+  if (event.code === "Space" && !/INPUT|BUTTON/.test(document.activeElement.tagName)) {
+    event.preventDefault();
+    togglePlay();
+  }
+});
+
+let pointerStart = null;
+renderer.domElement.addEventListener("pointerdown", event => {
+  pointerStart = { x: event.clientX, y: event.clientY };
+});
+renderer.domElement.addEventListener("pointerup", event => {
+  if (!pointerStart) return;
+  const moved = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
+  pointerStart = null;
+  if (moved > 7) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(planetObjects.map(item => item.mesh), false);
+  if (hits.length) selectPlanet(hits[0].object.userData.planetIndex);
+});
+renderer.domElement.addEventListener("pointercancel", () => { pointerStart = null; });
+
+function resize() {
+  const width = Math.max(1, stage.clientWidth);
+  const height = Math.max(1, stage.clientHeight);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setSize(width, height, false);
+  labelRenderer.setSize(width, height);
+}
+const resizeObserver = new ResizeObserver(resize);
+resizeObserver.observe(stage);
+window.addEventListener("resize", resize);
+resize();
+
+function render(now) {
+  requestAnimationFrame(render);
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  planetObjects.forEach(({ data, group }) => {
+    group.rotation.y += data.velocity * speedFactor * orbitMix * dt;
+  });
+
+  const dimFactor = selectedIndex >= 0 ? 0.4 : 1;
+  planetObjects.forEach(({ mesh }, index) => {
+    const isSelected = index === selectedIndex;
+    const material = mesh.material;
+    const brightness = selectedIndex < 0 ? 0.04 : (isSelected ? 0.48 : 0.018);
+    material.emissiveIntensity += (brightness - material.emissiveIntensity) * 0.09;
+    material.color.copy(mesh.userData.baseColor).multiplyScalar(selectedIndex < 0 || isSelected ? 1 : dimFactor);
+  });
+  sun.material.emissiveIntensity += ((selectedIndex >= 0 ? 0.62 : 1.7) - sun.material.emissiveIntensity) * 0.08;
+  sun.material.color.copy(threeColor("--sun")).multiplyScalar(selectedIndex >= 0 ? 0.4 : 1);
+  starMaterial.opacity += ((selectedIndex >= 0 ? 0.34 : 0.76) - starMaterial.opacity) * 0.04;
+
+  orbitMaterials.forEach((material, index) => {
+    const base = selectedIndex >= 0 ? 0.10 : 0.24;
+    const orbitFocused = selectedIndex >= 0 && index === selectedIndex ? 0.48 : base;
+    material.opacity += (orbitFocused - material.opacity) * 0.04;
+  });
+
+  if (selectedIndex >= 0 && focusGlow.visible) {
+    const selected = planetObjects[selectedIndex];
+    selected.mesh.getWorldPosition(focusGlow.position);
+    const pulse = 1 + Math.sin(now * 0.003) * 0.06;
+    focusGlow.scale.setScalar(selected.data.radius * 1.56 * pulse);
+    focusGlow.material.opacity = 0.13 + (Math.sin(now * 0.003) + 1) * 0.045;
+  }
+  sunGlow.scale.setScalar(1 + Math.sin(now * 0.0018) * 0.035);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

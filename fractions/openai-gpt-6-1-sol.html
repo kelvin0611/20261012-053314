@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>美味薄餅學分數</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&amp;family=Nunito:wght@400;700&amp;family=Noto+Sans+TC:wght@400;700&amp;display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F3FF;
+    --fg: #3A2340;
+    --muted: #5B4A6B;
+    --surface: #FFFFFF;
+    --border: #E7E1EE;
+    --accent: #6B3FA0;
+    --accent-fg: #FFFFFF;
+    --ok: #1F7A45;
+    --warn: #C2185B;
+    --palette: #FFD6E0, #C3F0CA, #B8E1FF, #FFE9A8;
+    --radius: 30px;
+    --shadow: 0 12px 0 -4px rgba(58,35,64,.10),0 18px 28px rgba(58,35,64,.14),inset 0 -4px 0 rgba(58,35,64,.06);
+    --font-display: 'Fredoka','Noto Sans TC',sans-serif;
+    --font-body: 'Nunito','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+    --cheese: #FFE9A8;
+    --cheese-deep: #F5C661;
+    --crust: #DFA052;
+    --crust-light: #FFE0A1;
+    --wood: #CFAB86;
+    --wood-light: #F4DDC1;
+    --wood-dark: #AB7850;
+    --tomato: #C94F45;
+    --tomato-light: #F78C75;
+    --leaf: #428359;
+    --mushroom: #FFF2DD;
+    --numerator: #A84C0C;
+    --denominator: #24649B;
+    --pink: #FFD6E0;
+    --green: #C3F0CA;
+    --blue: #B8E1FF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  #stage { position: relative; min-height: 0; overflow: hidden; background: var(--surface); }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  #controls { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  label { font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+  #stage { margin: 0 calc(var(--gap) * 1.5); }
+  #controls { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; margin: var(--gap) calc(var(--gap) * 1.5); }
+
+  .topbar h1 { font-size: clamp(34px, 3vw, 42px); }
+  #stage { display: grid; grid-template-columns: minmax(0, 1fr) 310px; grid-template-rows: minmax(0, 1fr) 62px; }
+  .scene { min-width: 0; min-height: 0; position: relative; padding: 16px 0 0 16px; }
+  #pizza-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+  .board {
+    min-width: 0;
+    min-height: 0;
+    padding: 20px 28px 20px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+  }
+  .board > * { flex-shrink: 0; }
+  .board h2 { font-size: 24px; line-height: 1.3; margin: 0; text-align: center; color: var(--muted); }
+  .fraction-layout { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 6px; height: 132px; }
+  #fraction { font-size: 54px; text-align: center; transform-origin: center; line-height: 1; height: 132px; display: flex; align-items: center; justify-content: center; }
+  #fraction .katex { font-size: 1em; }
+  .annotations { display: flex; flex-direction: column; justify-content: space-between; height: 132px; font-size: 20px; line-height: 1.25; }
+  .annotations strong { display: block; font-size: 22px; }
+  .num { color: var(--numerator); }
+  .den { color: var(--denominator); }
+  .line-label { color: var(--muted); font-size: 20px; }
+  #reading { font-size: 28px; line-height: 1.3; font-weight: 700; text-align: center; min-height: 37px; }
+  .readout { border-top: 2px solid var(--border); padding-top: 8px; font-size: 22px; }
+  .readout p { margin: 0; line-height: 1.5; }
+  .meter { height: 12px; background: var(--bg); border-radius: var(--radius); overflow: hidden; margin: 6px 0; }
+  #meter-fill { height: 100%; width: 0; background: var(--accent); border-radius: var(--radius); }
+  #remaining { color: var(--muted); }
+  .caption { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 10px 28px; background: var(--bg); border-top: 1px solid var(--border); font-size: 22px; }
+  .caption .small { font-size: 20px; color: var(--muted); white-space: nowrap; }
+  #controls { gap: 12px; padding: 16px 22px; }
+  .cut-group { display: flex; align-items: center; gap: 10px; }
+  .cut-label { margin-right: 6px; font-size: 22px; font-weight: 700; line-height: 1.3; }
+  .cut-label small { display: block; font-size: 20px; color: var(--muted); font-weight: 400; }
+  .cut-button { min-width: 60px; padding: 8px 14px; }
+  .cut-button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .dock-divider { width: 2px; height: 46px; background: var(--border); margin: 0 4px; }
+  svg text { fill: var(--fg); font-family: var(--font-body); font-size: 23px; font-weight: 700; }
+  .slice { cursor: pointer; outline: none; }
+  .slice:focus-visible .crust { stroke: var(--accent); stroke-width: 6; }
+  .slice:hover:not(.eaten) .crust { filter: brightness(1.05); }
+  .slice.eaten { cursor: default; }
+  #hint { position: absolute; left: 50%; bottom: 78px; transform: translateX(-50%); padding: 12px 24px; background: var(--accent); color: var(--accent-fg); border-radius: var(--radius); box-shadow: var(--shadow); pointer-events: none; opacity: 0; z-index: 5; }
+  @media (min-width: 1550px) {
+    #stage { grid-template-columns: minmax(0, 1fr) 390px; }
+    .board { padding-right: 48px; }
+    .fraction-layout { grid-template-columns: 140px 1fr; }
+  }
+  @media (min-width: 1550px) and (min-height: 801px) {
+    .board { padding-top: 28px; padding-bottom: 28px; gap: 18px; }
+    #fraction { font-size: 82px; height: 190px; }
+    .fraction-layout, .annotations { height: 190px; }
+    .readout { font-size: 26px; padding-top: 14px; }
+    .meter { height: 16px; margin: 10px 0; }
+  }
+  @media (max-width: 1050px) {
+    .topbar { padding: 16px 24px; gap: 12px; }
+    .topbar .goal { max-width: 470px; }
+    .topbar .btn { padding: 10px 14px; }
+    #stage { margin: 0 24px; grid-template-columns: minmax(0, 1fr) 250px; }
+    .board { padding-right: 20px; }
+    .fraction-layout { grid-template-columns: 85px 1fr; }
+    #controls { margin: 16px 24px; padding: 12px; gap: 8px; }
+    #controls .btn { padding: 8px 12px; }
+    .cut-group { gap: 6px; }
+    .cut-label { font-size: 20px; }
+    .dock-divider { display: none; }
+    .caption .small { display: none; }
+  }
+  @media (max-height: 680px) {
+    .topbar { padding-top: 12px; padding-bottom: 12px; }
+    #controls { margin-top: 12px; margin-bottom: 12px; }
+    .board { gap: 4px; padding-top: 12px; padding-bottom: 12px; }
+    .fraction-layout, .annotations, #fraction { height: 120px; }
+    #fraction { font-size: 50px; }
+    .readout { padding-top: 6px; }
+  }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>美味薄餅學分數</h1>
+      <p class="goal">明白分數的分母代表等分的總件數，分子代表取出的件數。</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="reset-btn" type="button">↺ 重新開始</button>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  <main id="stage" class="card" aria-label="演示畫面">
+    <div class="scene">
+      <svg id="pizza-svg" viewBox="0 0 820 460" role="group" aria-label="點擊等分的薄餅切件，選擇食咗幾多件">
+        <defs>
+          <radialGradient id="wood">
+            <stop offset="0" style="stop-color:var(--wood-light)"/>
+            <stop offset=".85" style="stop-color:var(--wood-light)"/>
+            <stop offset="1" style="stop-color:var(--wood)"/>
+          </radialGradient>
+          <radialGradient id="cheese">
+            <stop offset="0" style="stop-color:var(--cheese)"/>
+            <stop offset=".8" style="stop-color:var(--cheese)"/>
+            <stop offset="1" style="stop-color:var(--cheese-deep)"/>
+          </radialGradient>
+          <linearGradient id="crust" x1="0" y1="0" x2="0" y2="1">
+            <stop style="stop-color:var(--crust-light)"/>
+            <stop offset="1" style="stop-color:var(--crust)"/>
+          </linearGradient>
+          <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
+            <feGaussianBlur stdDeviation="5"/>
+          </filter>
+          <g id="tomato">
+            <circle r="18" style="fill:var(--tomato)"/>
+            <circle cy="-2" r="13" style="fill:var(--tomato-light)"/>
+            <path d="M-7,-5 L-3,-2 M6,-5 L3,-2 M0,7 L0,3" style="stroke:var(--cheese);stroke-width:3;stroke-linecap:round"/>
+          </g>
+          <g id="mushroom">
+            <path d="M-5,0 L-6,15 Q0,19 6,15 L5,0" style="fill:var(--wood-light);stroke:var(--wood-dark);stroke-width:1.5"/>
+            <path d="M-19,2 Q-18,-19 0,-19 Q18,-19 19,2 Q0,9 -19,2" style="fill:var(--mushroom);stroke:var(--wood-dark);stroke-width:2"/>
+          </g>
+          <g id="toppings">
+            <use href="#tomato" transform="translate(-78,-75)"/>
+            <use href="#tomato" transform="translate(63,-89)"/>
+            <use href="#tomato" transform="translate(99,21)"/>
+            <use href="#tomato" transform="translate(28,101)"/>
+            <use href="#tomato" transform="translate(-90,64)"/>
+            <use href="#tomato" transform="translate(-12,-8)"/>
+            <use href="#mushroom" transform="translate(-12,-110) rotate(-16)"/>
+            <use href="#mushroom" transform="translate(108,-47) rotate(25)"/>
+            <use href="#mushroom" transform="translate(67,72) rotate(18)"/>
+            <use href="#mushroom" transform="translate(-35,96) rotate(-20)"/>
+            <use href="#mushroom" transform="translate(-111,-3) rotate(-24)"/>
+            <use href="#mushroom" transform="translate(30,18) rotate(13)"/>
+            <g style="fill:var(--leaf)">
+              <ellipse cx="-48" cy="-38" rx="7" ry="15" transform="rotate(-35 -48 -38)"/>
+              <ellipse cx="32" cy="-62" rx="7" ry="15" transform="rotate(35 32 -62)"/>
+              <ellipse cx="63" cy="38" rx="7" ry="14" transform="rotate(-40 63 38)"/>
+              <ellipse cx="-39" cy="40" rx="7" ry="15" transform="rotate(30 -39 40)"/>
+              <ellipse cx="-60" cy="113" rx="6" ry="12" transform="rotate(40 -60 113)"/>
+            </g>
+            <g style="fill:var(--crust);opacity:.55">
+              <circle cx="-58" cy="-110" r="4"/><circle cx="77" cy="-20" r="4"/>
+              <circle cx="-7" cy="58" r="5"/><circle cx="-115" cy="36" r="4"/>
+              <circle cx="42" cy="-121" r="4"/><circle cx="107" cy="78" r="4"/>
+            </g>
+          </g>
+        </defs>
+        <text x="272" y="33" text-anchor="middle">每件一樣大，才是「等分」</text>
+        <ellipse cx="272" cy="425" rx="194" ry="14" style="fill:var(--fg);opacity:.12" filter="url(#softShadow)"/>
+        <circle cx="272" cy="242" r="191" style="fill:var(--wood-dark)"/>
+        <circle cx="272" cy="236" r="191" fill="url(#wood)"/>
+        <circle cx="272" cy="236" r="179" style="fill:none;stroke:var(--wood-dark);stroke-width:2;opacity:.4"/>
+        <ellipse cx="666" cy="364" rx="115" ry="11" style="fill:var(--fg);opacity:.1" filter="url(#softShadow)"/>
+        <circle cx="666" cy="263" r="110" style="fill:var(--border)"/>
+        <circle cx="666" cy="258" r="110" style="fill:var(--bg);stroke:var(--border);stroke-width:3"/>
+        <circle cx="666" cy="258" r="91" style="fill:var(--surface);stroke:var(--border);stroke-width:2"/>
+        <text x="666" y="99" text-anchor="middle">食咗的份數</text>
+        <text id="tray-count" x="666" y="132" text-anchor="middle" style="fill:var(--numerator)">0 件</text>
+        <g id="ghosts" transform="translate(272 236)"></g>
+        <g id="pizza-root" transform="translate(272 236)">
+          <g id="slices"></g>
+          <g id="cut-rays" style="pointer-events:none"></g>
+        </g>
+        <text id="pizza-count" x="272" y="453" text-anchor="middle">等分成 4 件</text>
+        <text x="666" y="408" text-anchor="middle" style="font-size:20px;fill:var(--muted)">小餐盤記錄已吃的件數</text>
+      </svg>
+    </div>
+    <aside class="board" aria-label="即時分數看板">
+      <h2>食咗的分數</h2>
+      <div class="fraction-layout">
+        <div id="fraction" aria-label="四分之零"></div>
+        <div class="annotations">
+          <div class="num"><strong>分子</strong>吃了件數</div>
+          <div class="line-label">← 分數線</div>
+          <div class="den"><strong>分母</strong>等分總數</div>
+        </div>
+      </div>
+      <div id="reading">四分之零</div>
+      <div class="readout" aria-live="polite" aria-atomic="true">
+        <p id="live-count">食咗 0 件 ／ 共 4 件</p>
+        <div class="meter" role="meter" aria-label="食咗的比例" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"><div id="meter-fill"></div></div>
+        <p id="remaining">仲有 4 件</p>
+      </div>
+    </aside>
+    <div class="caption">
+      <span id="caption-text">先揀切幾多件，再點薄餅切件「食咗佢」！</span>
+      <span class="small">示意圖（比例不準確）</span>
+    </div>
+    <div id="hint" role="status"></div>
+  </main>
+  <div id="controls" class="card" aria-label="控制面板">
+    <div class="cut-group" role="group" aria-label="切成幾多件（2 / 3 / 4 / 6 / 8）">
+      <div class="cut-label">切開件數<small>分母・每件等分</small></div>
+    </div>
+    <div class="dock-divider"></div>
+  </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const Viz = window.Viz;
+  if (!Viz) return;
+  const hasGSAP = typeof gsap !== 'undefined';
+  if (hasGSAP && typeof Draggable !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
+    gsap.registerPlugin(Draggable, MotionPathPlugin);
+  }
+  const NS = 'http://www.w3.org/2000/svg';
+  function node(tag, attrs, parent) {
+    const el = document.createElementNS(NS, tag);
+    Object.entries(attrs || {}).forEach(([k,v]) => el.setAttribute(k,v));
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+  const sliceLayer = document.getElementById('slices');
+  const ghostLayer = document.getElementById('ghosts');
+  const rays = document.getElementById('cut-rays');
+  const defs = document.querySelector('#pizza-svg defs');
+  let total = 4, count = 0, pieces = [], busy = false, playing = false, timer = 0, generation = 0;
+  const numberWords = ['零','一','二','三','四','五','六','七','八'];
+  const cutButtons = [];
+  function sector(r, start, end) {
+    const a = start*Math.PI/180, b = end*Math.PI/180;
+    return `M0,0 L${r*Math.cos(a)},${r*Math.sin(a)} A${r},${r} 0 ${end-start>180?1:0},1 ${r*Math.cos(b)},${r*Math.sin(b)} Z`;
+  }
+  function update(animate) {
+    const fraction = document.getElementById('fraction');
+    const reading = numberWords[total]+'分之'+numberWords[count];
+    if (typeof katex !== 'undefined') {
+      katex.render('\\frac{\\color{'+Viz.color('--numerator')+'}{'+count+'}}{\\color{'+Viz.color('--denominator')+'}{'+total+'}}',fraction,{throwOnError:false});
+    } else {
+      fraction.innerHTML = '<span style="display:inline-flex;flex-direction:column;line-height:1.1"><span style="color:var(--numerator);border-bottom:2px solid var(--fg)">'+count+'</span><span style="color:var(--denominator)">'+total+'</span></span>';
+    }
+    fraction.setAttribute('aria-label', reading);
+    document.getElementById('reading').textContent = reading;
+    document.getElementById('live-count').textContent = '食咗 '+count+' 件 ／ 共 '+total+' 件';
+    document.getElementById('remaining').textContent = '仲有 '+(total-count)+' 件';
+    document.getElementById('tray-count').textContent = count+' 件';
+    document.getElementById('pizza-count').textContent = '等分成 '+total+' 件';
+    document.getElementById('meter-fill').style.width = count/total*100+'%';
+    const meter = document.querySelector('.meter');
+    meter.setAttribute('aria-valuemax',total);
+    meter.setAttribute('aria-valuenow',count);
+    cutButtons.forEach(b => b.setAttribute('aria-pressed',Number(b.dataset.value)===total));
+    document.getElementById('caption-text').textContent = count===total
+      ? '全部食晒！'+total+' 件中的 '+total+' 件，就是 1 個完整薄餅。'
+      : '點擊薄餅切件「食咗佢」，看看分子怎樣變！';
+    if (animate && hasGSAP) {
+      gsap.killTweensOf(fraction);
+      gsap.fromTo(fraction,{scale:1.2,y:-8},{scale:1,y:0,duration:Viz.duration(.35),ease:'back.out(2)'});
+      gsap.fromTo('#reading',{opacity:0},{opacity:1,duration:Viz.duration(.35),ease:'power2.out'});
+    }
+  }
+  function setPlay(value) {
+    playing = value;
+    timer = 0;
+    playButton.textContent = playing ? '❚❚ 暫停示範' : '▶ 播放示範';
+    playButton.setAttribute('aria-pressed',playing);
+  }
+  function build(n, animate) {
+    generation++;
+    busy = false;
+    total = n;
+    count = 0;
+    pieces = [];
+    if (hasGSAP) {
+      gsap.killTweensOf(sliceLayer.querySelectorAll('*'));
+      gsap.killTweensOf('#pizza-root');
+      gsap.set('#pizza-root',{scale:1,svgOrigin:'272 236'});
+    }
+    sliceLayer.replaceChildren();
+    ghostLayer.replaceChildren();
+    rays.replaceChildren();
+    defs.querySelectorAll('.slice-clip').forEach(el => el.remove());
+    for (let i=0;i<n;i++) {
+      const start = -90 + 360*i/n, end = -90 + 360*(i+1)/n;
+      const clip = node('clipPath',{id:'clip-'+i,class:'slice-clip'},defs);
+      node('path',{d:sector(153,start,end)},clip);
+      const ghost = node('path',{d:sector(168,start,end),fill:'var(--surface)',opacity:0,stroke:'var(--surface)','stroke-width':3,'stroke-dasharray':'7 7'},ghostLayer);
+      const g = node('g',{class:'slice',role:'button',tabindex:'0','aria-label':'第 '+(i+1)+' 件薄餅，點擊食咗佢'},sliceLayer);
+      node('path',{d:sector(168,start,end),fill:'url(#crust)',stroke:'var(--wood-dark)','stroke-width':1.5,class:'crust'},g);
+      node('path',{d:sector(153,start,end),fill:'url(#cheese)'},g);
+      const tops = node('g',{'clip-path':'url(#clip-'+i+')'},g);
+      node('use',{href:'#toppings'},tops);
+      const angle = (start+end)/2*Math.PI/180;
+      pieces.push({el:g,ghost,eaten:false,angle});
+      g.addEventListener('click',() => eat(i));
+      g.addEventListener('keydown',e => {
+        if (e.key==='Enter'||e.key===' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          eat(i);
+        }
+      });
+      const theta = start*Math.PI/180;
+      node('line',{x1:0,y1:0,x2:168*Math.cos(theta),y2:168*Math.sin(theta),stroke:'var(--surface)','stroke-width':4,'stroke-linecap':'round','stroke-dasharray':'168 168','stroke-dashoffset':animate?168:0,opacity:animate?0:.9},rays);
+    }
+    update(animate);
+    if (animate && hasGSAP) {
+      gsap.to(rays.children,{opacity:.9,attr:{'stroke-dashoffset':0},duration:Viz.duration(.4),ease:'power2.out'});
+      gsap.fromTo('#pizza-root',{scale:1.03,svgOrigin:'272 236'},{scale:1,duration:Viz.duration(.4),ease:'elastic.out(1,.5)'});
+    } else {
+      Array.from(rays.children).forEach(el => {
+        el.setAttribute('opacity','.9');
+        el.setAttribute('stroke-dashoffset','0');
+      });
+    }
+  }
+  function eat(i) {
+    const p = pieces[i];
+    if (!p || p.eaten || busy) return;
+    busy = true;
+    p.eaten = true;
+    count++;
+    p.el.classList.add('eaten');
+    p.el.setAttribute('tabindex','-1');
+    p.el.setAttribute('aria-label','第 '+(i+1)+' 件，已食咗');
+    p.el.setAttribute('aria-disabled','true');
+    p.ghost.setAttribute('opacity','.52');
+    update(true);
+    const currentGeneration = generation;
+    const others = pieces.filter(q=>q!==p&&!q.eaten).map(q=>q.el);
+    function finished() {
+      if (currentGeneration!==generation) return;
+      busy = false;
+      if (hasGSAP && others.length) gsap.to(others,{opacity:1,duration:Viz.duration(.15)});
+      if (count===total) setPlay(false);
+    }
+    if (hasGSAP) {
+      gsap.set(p.el,{svgOrigin:'0 0'});
+      if (others.length) gsap.to(others,{opacity:.35,duration:Viz.duration(.1)});
+      gsap.timeline({onComplete:finished})
+        .to(p.el,{x:55*Math.cos(p.angle),y:55*Math.sin(p.angle)-15,scale:1.03,duration:Viz.duration(.2),ease:'power2.out'})
+        .to(p.el,{x:394,y:22,scale:.48,duration:Viz.duration(.3),ease:'power2.out'});
+    } else {
+      p.el.setAttribute('transform','translate(394 22) scale(.48)');
+      finished();
+    }
+  }
+  function newPizza() {
+    setPlay(false);
+    generation++;
+    busy = true;
+    count = 0;
+    update(true);
+    const moving = pieces.filter(p=>p.eaten);
+    pieces.forEach((p,index)=> {
+      p.eaten = false;
+      p.el.classList.remove('eaten');
+      p.el.setAttribute('tabindex','0');
+      p.el.removeAttribute('aria-disabled');
+      p.ghost.setAttribute('opacity','0');
+      p.el.setAttribute('aria-label','第 '+(index+1)+' 件薄餅，點擊食咗佢');
+    });
+    const myGeneration = generation;
+    if (hasGSAP) {
+      gsap.killTweensOf(pieces.map(p=>p.el));
+      gsap.set(pieces.map(p=>p.el),{opacity:1});
+      if (moving.length) {
+        gsap.to(moving.map(p=>p.el),{x:0,y:0,scale:1,svgOrigin:'0 0',duration:Viz.duration(.7),ease:'back.out(1.7)',onComplete:()=>{
+          if (myGeneration===generation) busy=false;
+        }});
+      } else busy=false;
+    } else {
+      pieces.forEach(p=>p.el.removeAttribute('transform'));
+      busy=false;
+    }
+  }
+  [2,3,4,6,8].forEach(n=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='btn cut-button';
+    b.textContent=n+' 件';
+    b.dataset.value=n;
+    b.setAttribute('aria-pressed',n===total);
+    b.addEventListener('click',()=>{setPlay(false);build(n,true);});
+    document.querySelector('.cut-group').appendChild(b);
+    cutButtons.push(b);
+  });
+  Viz.button('重新整過一個薄餅',newPizza,false);
+  const playButton = Viz.button('▶ 播放示範',()=>{
+    if (count===total&&!playing) newPizza();
+    setPlay(!playing);
+  },true);
+  playButton.setAttribute('aria-pressed','false');
+  Viz.loop(dt=>{
+    if (!playing||busy) return;
+    timer+=dt;
+    if (timer>=1.5) {
+      timer=0;
+      const next=pieces.findIndex(p=>!p.eaten);
+      if (next>=0) eat(next);
+      else setPlay(false);
+    }
+  });
+  Viz.onReset(()=>{setPlay(false);build(4,true);});
+  Viz.onResize(()=>{
+    document.getElementById('pizza-svg').setAttribute('preserveAspectRatio','xMidYMid meet');
+  });
+  build(4,false);
+});
+</script>
+</body>
+</html>

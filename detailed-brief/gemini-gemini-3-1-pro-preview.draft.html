@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>認識香港的天氣</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    /* 主色調為天藍與白色 */
+    --bg: #E1F5FE;
+    --fg: #102A43;
+    --muted: #486581;
+    --surface: #FFFFFF;
+    --border: #B3E5FC;
+    --accent: #0288D1;
+    --accent-fg: #FFFFFF;
+    --ok: #1F7A45;
+    --warn: #C2185B;
+    --palette: #81D4FA, #4FC3F7, #29B6F6, #03A9F4;
+    --radius: 24px;
+    --shadow: 0 8px 24px rgba(2, 136, 209, 0.12), inset 0 -4px 0 rgba(0, 0, 0, 0.05);
+    --font-display: 'Fredoka','Noto Sans TC',sans-serif;
+    --font-body: 'Nunito','Noto Sans TC',sans-serif;
+    --gap: clamp(16px, 2vw, 24px);
+    
+    /* 自訂天氣顏色 */
+    --btn-shadow: 0 6px 0 var(--border);
+    --btn-active-shadow: 0 0px 0 var(--border);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); background: var(--surface); box-shadow: 0 2px 12px rgba(0,0,0,0.05); z-index: 10; position: relative;}
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 36px); margin: 0; line-height: 1.15; color: var(--accent); }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 18px; max-width: 600px; }
+  .topbar .spacer { flex: 1; }
+  
+  .btn { font: 700 20px var(--font-body); min-height: 50px; padding: 10px 22px; border-radius: 16px; border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  
+  /* Layout */
+  body { display: grid; grid-template-rows: auto 1fr; }
+  .layout { display: grid; grid-template-columns: 1fr 400px; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); min-height: 0; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr 350px; } }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; grid-template-rows: 50vh auto; overflow: auto;} body { overflow: auto; } }
+
+  /* Left Stage */
+  #stage { position: relative; border-radius: var(--radius); border: 2px solid var(--border); box-shadow: var(--shadow); background: var(--surface); overflow: hidden; display: flex; justify-content: center; align-items: center;}
+  #scene-svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .disclaimer { position: absolute; bottom: 12px; right: 16px; font-size: 14px; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: 8px; pointer-events: none; }
+
+  /* Right Panel */
+  #panel { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  
+  /* Weather Buttons */
+  .weather-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .w-btn { font: 700 22px var(--font-display); padding: 16px 8px; border-radius: 16px; border: 2px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; text-align: center; box-shadow: var(--btn-shadow); transition: all 0.15s ease-out; transform: translateY(0); display: flex; flex-direction: column; align-items: center; gap: 4px; line-height: 1.2; }
+  .w-btn span.icon { font-size: 32px; }
+  .w-btn:hover { background: #F1FAFF; border-color: var(--accent); color: var(--accent); }
+  .w-btn:active { transform: translateY(6px); box-shadow: var(--btn-active-shadow); }
+  .w-btn.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); box-shadow: var(--btn-active-shadow); transform: translateY(6px); pointer-events: none; }
+
+  /* Info Card */
+  .info-card { flex: 1; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); box-shadow: var(--shadow); padding: 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+  .info-header { border-bottom: 2px dashed var(--border); padding-bottom: 16px; margin-bottom: 4px; }
+  .info-title { font-family: var(--font-display); font-size: 34px; margin: 0; color: var(--accent); display: flex; align-items: center; gap: 12px; }
+  
+  .section-title { font-size: 20px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .section-title::before { content: ''; display: inline-block; width: 6px; height: 20px; background: var(--palette); border-radius: 3px; }
+  .section-title.c1::before { background: #FF9800; }
+  .section-title.c2::before { background: #4CAF50; }
+  .section-title.c3::before { background: #E91E63; }
+  
+  ul.info-list { margin: 0; padding-left: 28px; list-style-type: disc; color: var(--fg); font-size: 18px; }
+  ul.info-list li { margin-bottom: 8px; padding-left: 4px; }
+  ul.info-list li::marker { color: var(--accent); }
+
+  .warning-box { background: #FFF0F5; border: 2px solid #F8BBD0; padding: 14px 18px; border-radius: 12px; font-weight: 700; color: #C2185B; font-size: 18px; display: flex; align-items: center; gap: 12px; }
+  .warning-box img { width: 32px; height: 32px; }
+
+  /* Footer Banner */
+  .footer-banner { background: #FFD54F; color: #3E2723; padding: 16px; text-align: center; font-weight: 700; font-size: 22px; border-radius: 16px; border: 2px solid #FFC107; box-shadow: 0 6px 0 #FFC107; flex-shrink: 0; font-family: var(--font-display); letter-spacing: 1px;}
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>認識香港的天氣</h1>
+      <p class="goal">學生能辨識香港四種常見天氣的特徵、安全應對方法及相關天文台警告信號</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕">全螢幕</button>
+  </header>
+  
+  <div class="layout">
+    <main id="stage">
+      <svg id="scene-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice">
+        <!-- 定義漸變和圖案 -->
+        <defs>
+          <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#4FC3F7" id="sky-top" />
+            <stop offset="100%" stop-color="#E1F5FE" id="sky-bottom" />
+          </linearGradient>
+          <linearGradient id="sea-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#0288D1" id="sea-top" />
+            <stop offset="100%" stop-color="#01579B" id="sea-bottom" />
+          </linearGradient>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        <!-- 背景天空 -->
+        <rect width="1000" height="700" fill="url(#sky-grad)" />
+
+        <!-- 太陽 -->
+        <g id="sun-group">
+          <circle cx="850" cy="150" r="60" fill="#FFEB3B" filter="url(#glow)" />
+          <circle cx="850" cy="150" r="45" fill="#FFF59D" />
+        </g>
+
+        <!-- 雲層 (後景) -->
+        <g id="clouds-bg" fill="rgba(255,255,255,0.7)">
+          <path class="cloud" d="M 150,200 a 30,30 0 0,1 0,-60 a 45,45 0 0,1 75,0 a 30,30 0 0,1 0,60 z" />
+          <path class="cloud" d="M 500,120 a 20,20 0 0,1 0,-40 a 35,35 0 0,1 55,0 a 20,20 0 0,1 0,40 z" />
+          <path class="cloud" d="M 850,250 a 25,25 0 0,1 0,-50 a 40,40 0 0,1 65,0 a 25,25 0 0,1 0,50 z" />
+        </g>
+
+        <!-- 山脈 (獅子山剪影) -->
+        <path id="mountain" d="M 0,550 L 150,420 Q 250,380 320,400 L 400,350 L 480,410 L 600,320 L 750,430 L 1000,300 L 1000,550 Z" fill="#90A4AE" />
+
+        <!-- 城市建築 (中環) -->
+        <g id="cityscape" fill="#CFD8DC">
+          <!-- Building 1 -->
+          <rect x="250" y="380" width="60" height="170" rx="4" />
+          <!-- Building 2 (IFC shape) -->
+          <path d="M 340,550 L 340,300 L 360,270 L 380,270 L 400,300 L 400,550 Z" fill="#B0BEC5" />
+          <!-- Building 3 (BOC shape) -->
+          <path d="M 440,550 L 440,350 L 470,280 L 500,350 L 500,550 Z" fill="#B0BEC5" />
+          <line x1="440" y1="350" x2="500" y2="550" stroke="#CFD8DC" stroke-width="4" />
+          <line x1="500" y1="350" x2="440" y2="550" stroke="#CFD8DC" stroke-width="4" />
+          <!-- Building 4 -->
+          <rect x="530" y="420" width="80" height="130" rx="4" />
+          <!-- 建築物燈光 (颱風時亮起) -->
+          <g id="building-lights" opacity="0" fill="#FFF59D">
+             <rect x="260" y="400" width="10" height="15" />
+             <rect x="280" y="430" width="10" height="15" />
+             <rect x="350" y="320" width="10" height="10" />
+             <rect x="380" y="380" width="10" height="10" />
+             <rect x="460" y="400" width="15" height="15" />
+             <rect x="540" y="450" width="20" height="10" />
+             <rect x="570" y="490" width="20" height="10" />
+          </g>
+        </g>
+
+        <!-- 海水 (維港) -->
+        <rect id="sea" x="0" y="520" width="1000" height="180" fill="url(#sea-grad)" />
+        <g id="waves" stroke="#81D4FA" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.6">
+          <path class="wave" d="M 100,550 Q 130,540 160,550" />
+          <path class="wave" d="M 300,580 Q 330,570 360,580" />
+          <path class="wave" d="M 600,545 Q 630,535 660,545" />
+          <path class="wave" d="M 800,575 Q 830,565 860,575" />
+        </g>
+
+        <!-- 前景樹木 -->
+        <g id="tree-group" transform-origin="800 650">
+          <path id="trunk" d="M 780,700 C 780,620 790,550 795,550 C 800,550 810,620 810,700 Z" fill="#795548" />
+          <g id="leaves">
+            <circle cx="760" cy="520" r="50" fill="#4CAF50" />
+            <circle cx="830" cy="530" r="45" fill="#43A047" />
+            <circle cx="795" cy="470" r="55" fill="#388E3C" />
+            <circle cx="740" cy="570" r="35" fill="#2E7D32" />
+            <circle cx="840" cy="580" r="40" fill="#2E7D32" />
+          </g>
+        </g>
+
+        <!-- 烏雲 (下雨/颱風) -->
+        <g id="dark-clouds" fill="#546E7A" opacity="0">
+          <path class="d-cloud" d="M 50,150 a 40,40 0 0,1 0,-80 a 60,60 0 0,1 100,0 a 40,40 0 0,1 0,80 z" />
+          <path class="d-cloud" d="M 400,180 a 50,50 0 0,1 0,-100 a 70,70 0 0,1 120,0 a 50,50 0 0,1 0,100 z" />
+          <path class="d-cloud" d="M 750,120 a 45,45 0 0,1 0,-90 a 65,65 0 0,1 110,0 a 45,45 0 0,1 0,90 z" />
+        </g>
+
+        <!-- 雨點圖層 (由 JS 生成) -->
+        <g id="rain-layer" opacity="0"></g>
+
+        <!-- 室內窗框遮罩 (颱風時顯示) -->
+        <path id="window-frame" d="M 0,0 H 1000 V 700 H 0 Z M 250,50 H 950 V 650 H 250 Z" fill="#37474F" fill-rule="evenodd" opacity="0" />
+        <!-- 窗框裝飾線 -->
+        <g id="window-decor" opacity="0" stroke="#263238" stroke-width="12">
+            <line x1="250" y1="50" x2="950" y2="50" />
+            <line x1="250" y1="650" x2="950" y2="650" />
+            <line x1="250" y1="50" x2="250" y2="650" />
+            <line x1="950" y1="50" x2="950" y2="650" />
+            <line x1="600" y1="50" x2="600" y2="650" stroke-width="8" /> <!-- 中間窗櫺 -->
+        </g>
+
+        <!-- 人物角色 (左下角) -->
+        <!-- 注意：人物放在窗框之後，代表他在室內窗邊往外看 -->
+        <g id="character" transform="translate(150, 480)">
+          <!-- 身體基礎 (短袖校服) -->
+          <g id="char-base">
+            <!-- 腿 -->
+            <rect x="-15" y="80" width="10" height="50" fill="#FFCCBC" rx="5" />
+            <rect x="5" y="80" width="10" height="50" fill="#FFCCBC" rx="5" />
+            <!-- 鞋 -->
+            <rect x="-20" y="125" width="18" height="12" fill="#424242" rx="4" />
+            <rect x="2" y="125" width="18" height="12" fill="#424242" rx="4" />
+            <!-- 褲子 -->
+            <path d="M -20,50 L 20,50 L 22,90 L 2,90 L 0,70 L -2,90 L -22,90 Z" fill="#9E9E9E" />
+            <!-- 軀幹短袖 -->
+            <path d="M -25,10 C -25,-5 25,-5 25,10 L 20,60 L -20,60 Z" fill="#FFFFFF" />
+            <!-- 手臂 -->
+            <rect x="-35" y="10" width="12" height="40" fill="#FFCCBC" rx="6" transform="rotate(15 -35 10)" />
+            <rect x="23" y="10" width="12" height="40" fill="#FFCCBC" rx="6" transform="rotate(-15 23 10)" />
+          </g>
+
+          <!-- 寒冷外套與圍巾 (隱藏) -->
+          <g id="char-jacket" opacity="0" transform-origin="0 30">
+             <!-- 厚外套 -->
+             <path d="M -30,5 C -30,-10 30,-10 30,5 L 25,65 L -25,65 Z" fill="#D32F2F" />
+             <!-- 長袖手臂 -->
+             <rect x="-40" y="5" width="16" height="55" fill="#D32F2F" rx="8" transform="rotate(12 -40 5)" />
+             <rect x="24" y="5" width="16" height="55" fill="#D32F2F" rx="8" transform="rotate(-12 24 5)" />
+             <!-- 紅圍巾 -->
+             <path d="M -15,0 Q 0,10 15,0 L 20,15 Q 0,25 -20,15 Z" fill="#F44336" />
+             <rect x="5" y="10" width="12" height="30" fill="#F44336" rx="4" transform="rotate(-10)" />
+          </g>
+
+          <!-- 頭部 -->
+          <circle cx="0" cy="-20" r="30" fill="#FFCCBC" />
+          <!-- 頭髮 -->
+          <path d="M -30,-20 C -35,-55 35,-55 30,-20 C 30,-40 -30,-40 -30,-20 Z" fill="#3E2723" />
+          <!-- 眼睛 -->
+          <circle cx="-10" cy="-25" r="4" fill="#3E2723" />
+          <circle cx="10" cy="-25" r="4" fill="#3E2723" />
+          <!-- 微笑 -->
+          <path d="M -8,-12 Q 0,-5 8,-12" stroke="#3E2723" stroke-width="2" fill="none" stroke-linecap="round" />
+          <!-- 紅暈 -->
+          <ellipse cx="-15" cy="-15" rx="5" ry="3" fill="#FF8A65" opacity="0.6" />
+          <ellipse cx="15" cy="-15" rx="5" ry="3" fill="#FF8A65" opacity="0.6" />
+
+          <!-- 下雨雨傘 (隱藏) -->
+          <g id="char-umbrella" opacity="0" transform-origin="0 40">
+             <rect x="18" y="-60" width="4" height="100" fill="#757575" />
+             <path d="M -50,-60 Q 0,-110 50,-60 Z" fill="#FFCA28" />
+             <path d="M -50,-60 Q -25,-70 0,-60 Q 25,-70 50,-60" fill="#FFB300" />
+             <circle cx="0" cy="-90" r="4" fill="#FFCA28" />
+             <!-- 手持傘 -->
+             <rect x="12" y="30" width="12" height="15" fill="#FFCCBC" rx="6" />
+          </g>
+
+          <!-- 呼出的白氣 (寒冷時顯示) -->
+          <g id="cold-breath"></g>
+        </g>
+        
+      </svg>
+      <div class="disclaimer">示意圖（比例不準確）</div>
+    </main>
+    
+    <aside id="panel" aria-label="解說">
+      <div class="weather-controls">
+        <button class="w-btn active" data-weather="sunny"><span class="icon">☀️</span>晴天</button>
+        <button class="w-btn" data-weather="rainy"><span class="icon">🌧️</span>下雨</button>
+        <button class="w-btn" data-weather="typhoon"><span class="icon">🌀</span>颱風</button>
+        <button class="w-btn" data-weather="cold"><span class="icon">🧣</span>寒冷</button>
+      </div>
+
+      <div id="info-card" class="info-card">
+        <div class="info-header">
+          <h2 class="info-title" id="info-title">☀️ 晴天</h2>
+        </div>
+        
+        <div id="info-content">
+            <div class="section-title c1">天氣特徵</div>
+            <ul class="info-list" id="list-features">
+              <li>天空蔚藍明亮，陽光充沛</li>
+              <li>氣溫較高，天氣炎熱</li>
+              <li>紫外線指數通常較高</li>
+            </ul>
+            
+            <div class="section-title c2" style="margin-top: 16px;">安全提示</div>
+            <ul class="info-list" id="list-safety">
+              <li>進行戶外活動時要塗防曬</li>
+              <li>多喝水，補充流失水分防中暑</li>
+              <li>穿著淺色及透氣的衣服</li>
+            </ul>
+            
+            <div class="section-title c3" style="margin-top: 16px;">香港天文台警告信號</div>
+            <div class="warning-box">
+              <span id="warning-text">酷熱天氣警告</span>
+            </div>
+        </div>
+      </div>
+
+      <div class="footer-banner">出門前記得看天文台預報！</div>
+    </aside>
+  </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // 註冊 GSAP
+    gsap.registerPlugin(Draggable);
+
+    // --- 數據定義 ---
+    const weatherData = {
+        sunny: {
+            title: "☀️ 晴天",
+            features: ["天空蔚藍明亮，陽光充沛", "氣溫較高，天氣炎熱", "紫外線指數通常較高"],
+            safety: ["進行戶外活動時要塗防曬", "多喝水，補充流失水分防中暑", "穿著淺色及透氣的衣服"],
+            warning: "酷熱天氣警告",
+            colors: { skyTop: "#4FC3F7", skyBottom: "#E1F5FE", seaTop: "#0288D1", seaBottom: "#01579B", mountain: "#90A4AE" }
+        },
+        rainy: {
+            title: "🌧️ 下雨",
+            features: ["烏雲密布，陽光減少", "密集的斜向雨點落下", "地面濕滑，有時伴隨雷暴"],
+            safety: ["帶備雨傘或穿著雨衣", "在安全的地方避雨", "小心地滑，慢慢行走"],
+            warning: "暴雨警告信號<br><span style='font-size:16px; font-weight:normal; color:#424242;'>(黃色、紅色、黑色)</span>",
+            colors: { skyTop: "#78909C", skyBottom: "#B0BEC5", seaTop: "#546E7A", seaBottom: "#37474F", mountain: "#78909C" }
+        },
+        typhoon: {
+            title: "🌀 颱風",
+            features: ["深色烏雲快速狂奔", "狂風大作，樹木劇烈晃動", "海面有巨浪及湧浪"],
+            safety: ["遠離岸邊及停止水上活動", "留在室內安全地方", "鎖緊門窗，收起戶外雜物"],
+            warning: "熱帶氣旋警告信號<br><span style='font-size:16px; font-weight:normal; color:#424242;'>(一號、三號、八號、九號、十號)</span>",
+            colors: { skyTop: "#37474F", skyBottom: "#607D8B", seaTop: "#263238", seaBottom: "#1C2833", mountain: "#455A64" }
+        },
+        cold: {
+            title: "🧣 寒冷",
+            features: ["天空呈現淡粉藍清冷色", "氣溫顯著下降", "天氣通常較乾燥，有冷空氣"],
+            safety: ["穿著足夠的禦寒衣物", "多關顧長者及小童", "使用暖爐時注意安全"],
+            warning: "寒冷天氣警告",
+            colors: { skyTop: "#B3E5FC", skyBottom: "#E3F2FD", seaTop: "#29B6F6", seaBottom: "#03A9F4", mountain: "#B0BEC5" }
+        }
+    };
+
+    let currentState = 'sunny';
+    
+    // --- 動畫全域變數 ---
+    let cloudAnimBg, cloudAnimDk, waveAnim, treeIdle;
+
+    // --- 初始化場景元素 ---
+    
+    // 生成雨點
+    const rainLayer = document.getElementById('rain-layer');
+    for (let i = 0; i < 120; i++) {
+        let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', 0); line.setAttribute('y1', 0);
+        line.setAttribute('x2', 20); line.setAttribute('y2', 30); // 45度斜向
+        line.setAttribute('stroke', 'rgba(255,255,255,0.7)');
+        line.setAttribute('stroke-width', Math.random() * 1.5 + 1);
+        line.classList.add('rain-drop');
+        // 分佈範圍廣於視圖以保證連續性
+        gsap.set(line, { 
+            x: Math.random() * 1400 - 200, 
+            y: Math.random() * -800 - 100 
+        });
+        rainLayer.appendChild(line);
+    }
+
+    // 生成呼氣粒子
+    const breathLayer = document.getElementById('cold-breath');
+    for (let i = 0; i < 5; i++) {
+        let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', Math.random() * 4 + 3);
+        circle.setAttribute('fill', 'rgba(255,255,255,0.8)');
+        circle.classList.add('breath-puff');
+        gsap.set(circle, { x: 5, y: -15, opacity: 0 }); // 嘴巴位置
+        breathLayer.appendChild(circle);
+    }
+
+    // --- 持續性基礎動畫 ---
+    
+    // 雲層飄動 (背景白雲)
+    gsap.set(".cloud", { x: i => i * 350 });
+    cloudAnimBg = gsap.to(".cloud", { 
+        x: "+=1200", duration: 40, ease: "none", repeat: -1,
+        modifiers: { x: gsap.utils.unitize(x => (parseFloat(x) % 1200) - 200) }
+    });
+
+    // 烏雲飄動 (颱風時加速)
+    gsap.set(".d-cloud", { x: i => i * 350 - 100 });
+    cloudAnimDk = gsap.to(".d-cloud", { 
+        x: "+=1200", duration: 30, ease: "none", repeat: -1,
+        modifiers: { x: gsap.utils.unitize(x => (parseFloat(x) % 1200) - 200) }
+    });
+
+    // 海浪微微波動
+    waveAnim = gsap.to(".wave", { x: "-=30", duration: 2, yoyo: true, repeat: -1, ease: "sine.inOut", stagger: 0.5 });
+
+    // 樹木自然微風呼吸
+    treeIdle = gsap.to("#tree-group", { rotate: 2, duration: 2.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+
+    // --- 天氣切換邏輯 ---
+    function switchWeather(type) {
+        if (currentState === type && !initialLoad) return;
+        currentState = type;
+        const data = weatherData[type];
+        
+        // 1. 更新 UI 卡片 (淡出淡入)
+        const infoContent = document.getElementById('info-content');
+        gsap.to(infoContent, { opacity: 0.35, duration: 0.2, onComplete: () => {
+            document.getElementById('info-title').innerHTML = data.title;
+            
+            let fHtml = ''; data.features.forEach(f => fHtml += `<li>${f}</li>`);
+            document.getElementById('list-features').innerHTML = fHtml;
+            
+            let sHtml = ''; data.safety.forEach(s => sHtml += `<li>${s}</li>`);
+            document.getElementById('list-safety').innerHTML = sHtml;
+            
+            document.getElementById('warning-text').innerHTML = data.warning;
+            
+            gsap.to(infoContent, { opacity: 1, duration: 0.3 });
+        }});
+
+        // 2. 更新背景顏色
+        gsap.to("#sky-top", { stopColor: data.colors.skyTop, duration: 0.5 });
+        gsap.to("#sky-bottom", { stopColor: data.colors.skyBottom, duration: 0.5 });
+        gsap.to("#sea-top", { stopColor: data.colors.seaTop, duration: 0.5 });
+        gsap.to("#sea-bottom", { stopColor: data.colors.seaBottom, duration: 0.5 });
+        gsap.to("#mountain", { fill: data.colors.mountain, duration: 0.5 });
+
+        // 3. 處理特定天氣動畫效果 (先重置)
+        resetSpecificAnimations();
+
+        if (type === 'sunny') {
+            gsap.to("#sun-group", { autoAlpha: 1, y: 0, duration: 0.5 });
+            gsap.to("#clouds-bg", { autoAlpha: 1, duration: 0.5 });
+            cloudAnimBg.timeScale(1);
+        } 
+        else if (type === 'rainy') {
+            gsap.to("#sun-group", { autoAlpha: 0, duration: 0.5 });
+            gsap.to("#dark-clouds", { autoAlpha: 0.9, duration: 0.5 });
+            gsap.to("#clouds-bg", { autoAlpha: 0, duration: 0.5 });
+            
+            // 人物撐傘
+            gsap.fromTo("#char-umbrella", 
+                { scale: 0.5, autoAlpha: 0, rotation: -30 }, 
+                { scale: 1, autoAlpha: 1, rotation: 0, duration: 0.5, ease: "back.out(1.2)" }
+            );
+
+            // 雨點落下: 0.4秒淡入至透明度0.85，以連續勻速向右下方45度連續落下
+            gsap.to("#rain-layer", { autoAlpha: 0.85, duration: 0.4 });
+            gsap.killTweensOf(".rain-drop");
+            gsap.to(".rain-drop", {
+                x: "+=400", y: "+=600",
+                duration: 0.5, ease: "none", repeat: -1,
+                modifiers: {
+                    x: gsap.utils.unitize(x => { let v = parseFloat(x); return v > 1200 ? v - 1400 : v; }),
+                    y: gsap.utils.unitize(y => { let v = parseFloat(y); return v > 700 ? v - 900 : v; })
+                }
+            });
+        }
+        else if (type === 'typhoon') {
+            gsap.to("#sun-group", { autoAlpha: 0, duration: 0.5 });
+            gsap.to("#dark-clouds", { autoAlpha: 1, duration: 0.5 });
+            gsap.to("#clouds-bg", { autoAlpha: 0, duration: 0.5 });
+            
+            // 雲層3倍速
+            gsap.to(cloudAnimDk, { timeScale: 3, duration: 0.5 });
+            
+            // 高樓燈光微亮
+            gsap.to("#building-lights", { autoAlpha: 0.8, duration: 0.5 });
+
+            // 人物留在室內窗邊 (顯示窗框遮罩)
+            gsap.to("#window-frame", { autoAlpha: 0.7, duration: 0.5 });
+            gsap.to("#window-decor", { autoAlpha: 1, duration: 0.5 });
+
+            // 樹木劇烈搖動: 0.3秒向右傾斜25度，隨後 elastic.out 擺動
+            treeIdle.pause();
+            gsap.killTweensOf("#tree-group");
+            gsap.to("#tree-group", { 
+                rotate: 25, duration: 0.3, ease: "power1.in", 
+                onComplete: () => {
+                    gsap.to("#tree-group", { 
+                        rotate: 5, duration: 0.8, ease: "elastic.out(1.5, 0.3)", yoyo: true, repeat: -1 
+                    });
+                }
+            });
+            
+            // 海浪加劇
+            waveAnim.timeScale(3);
+        }
+        else if (type === 'cold') {
+            gsap.to("#sun-group", { autoAlpha: 0.5, y: -20, duration: 0.5 }); // 太陽微弱
+            gsap.to("#clouds-bg", { autoAlpha: 0.8, duration: 0.5 });
+            cloudAnimBg.timeScale(0.5); // 雲飄得慢
+
+            // 人物換外套: 0.4秒以 scale 0.9 到 1.0 彈跳替換
+            gsap.fromTo("#char-jacket", 
+                { scale: 0.9, autoAlpha: 0 }, 
+                { scale: 1, autoAlpha: 1, duration: 0.4, ease: "back.out(1.7)" }
+            );
+
+            // 呼氣白氣
+            gsap.killTweensOf(".breath-puff");
+            gsap.set(".breath-puff", { opacity: 0, x: 5, y: -15, scale: 0.5 });
+            gsap.to(".breath-puff", {
+                opacity: 0, y: -40, x: "+=15", scale: 2,
+                duration: 1.5, stagger: { each: 0.3, repeat: -1 },
+                keyframes: {
+                    "0%": { opacity: 0 },
+                    "20%": { opacity: 0.6 },
+                    "100%": { opacity: 0 }
+                }
+            });
+        }
+    }
+
+    function resetSpecificAnimations() {
+        // 恢復正常雲速
+        gsap.to([cloudAnimBg, cloudAnimDk], { timeScale: 1, duration: 0.5 });
+        // 隱藏雨、烏雲、傘、外套、燈光、窗框、白氣
+        gsap.to("#rain-layer", { autoAlpha: 0, duration: 0.3 });
+        gsap.killTweensOf(".rain-drop");
+        gsap.to("#dark-clouds", { autoAlpha: 0, duration: 0.5 });
+        gsap.to("#char-umbrella", { autoAlpha: 0, scale: 0.8, duration: 0.3 });
+        gsap.to("#char-jacket", { autoAlpha: 0, scale: 0.9, duration: 0.3 });
+        gsap.to("#building-lights", { autoAlpha: 0, duration: 0.5 });
+        gsap.to("#window-frame", { autoAlpha: 0, duration: 0.5 });
+        gsap.to("#window-decor", { autoAlpha: 0, duration: 0.5 });
+        gsap.killTweensOf(".breath-puff");
+        gsap.set(".breath-puff", { opacity: 0 });
+        
+        // 恢復樹木和海浪
+        gsap.killTweensOf("#tree-group");
+        gsap.to("#tree-group", { rotate: 0, duration: 0.5, onComplete: () => treeIdle.play() });
+        waveAnim.timeScale(1);
+    }
+
+    // --- 事件綁定 ---
+    const buttons = document.querySelectorAll('.w-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // 更新按鈕狀態
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // 切換天氣
+            const type = btn.getAttribute('data-weather');
+            switchWeather(type);
+        });
+    });
+
+    // 全螢幕按鈕
+    const fsBtn = document.getElementById('fullscreen-btn');
+    fsBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // 初始化狀態
+    let initialLoad = true;
+    switchWeather('sunny');
+    initialLoad = false;
+});
+</script>
+</body>
+</html>

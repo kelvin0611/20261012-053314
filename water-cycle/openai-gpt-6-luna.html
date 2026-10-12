@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>神奇的水循環之旅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&amp;family=Nunito:wght@400;700&amp;family=Noto+Sans+TC:wght@400;700&amp;display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F3FF;
+    --fg: #3A2340;
+    --muted: #5B4A6B;
+    --surface: #FFFFFF;
+    --border: #E7E1EE;
+    --accent: #6B3FA0;
+    --accent-fg: #FFFFFF;
+    --ok: #1F7A45;
+    --warn: #C2185B;
+    --palette: #FFD6E0, #C3F0CA, #B8E1FF, #FFE9A8;
+    --radius: 30px;
+    --shadow: 0 12px 0 -4px rgba(58,35,64,.10),0 18px 28px rgba(58,35,64,.14),inset 0 -4px 0 rgba(58,35,64,.06);
+    --font-display: 'Fredoka','Noto Sans TC',sans-serif;
+    --font-body: 'Nunito','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+    --sky: #DDF5FF;
+    --sky-cool: #E8F8F7;
+    --sea: #48B8D9;
+    --sea-deep: #238CAF;
+    --water-light: #A7EDFA;
+    --hill: #83C98B;
+    --hill-dark: #46966B;
+    --cloud: #FFFFFF;
+    --cloud-shadow: #D6E2EC;
+    --rain-cloud: #8297A9;
+    --sun: #FFD36B;
+    --sun-glow: #FFF0B5;
+    --soil: #A67859;
+    --ink-soft: #526B7D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  #stage { position: relative; min-height: 0; overflow: hidden; background: var(--surface); }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  #controls { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  label { font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+  .layout { display: grid; grid-template-columns: 1fr minmax(260px, 22vw); gap: var(--gap); padding: 0 calc(var(--gap) * 1.5); min-height: 0; }
+  #caption { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); font-size: clamp(22px, 2vw, 30px); font-weight: 600; }
+  #caption .text { flex: 1; }
+  .control-heading { margin: 2px 0 0; color: var(--muted); font-size: 20px; font-weight: 700; }
+  .control-note { margin: auto 0 0; color: var(--muted); font-size: 18px; line-height: 1.4; }
+  #controls .btn { width: 100%; }
+  .scene-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .scene-title {
+    position: absolute; z-index: 2; left: 24px; top: 20px; max-width: 78%;
+    padding: 7px 18px; border: 2px solid var(--border); border-radius: 24px;
+    background: var(--surface); color: var(--accent); box-shadow: var(--shadow);
+    font: 700 clamp(19px, 2vw, 27px)/1.25 var(--font-body);
+  }
+  .scene-note {
+    position: absolute; z-index: 2; right: 18px; bottom: 14px;
+    padding: 4px 12px; border-radius: 18px; background: var(--surface);
+    color: var(--muted); font-size: 16px; font-weight: 700;
+  }
+  .stage-hint {
+    position: absolute; z-index: 2; left: 50%; top: 20px; transform: translateX(-50%);
+    padding: 7px 18px; border-radius: 22px; background: var(--accent);
+    color: var(--accent-fg); font-size: 19px; font-weight: 700;
+    box-shadow: var(--shadow); white-space: nowrap;
+  }
+  #scene-art { transform-origin: center center; }
+  .cloud-main { transform-box: fill-box; transform-origin: center center; }
+  .cloud-puff { fill: var(--cloud); }
+  .cloud-under { fill: var(--cloud-shadow); }
+  .drop { fill: var(--water-light); stroke: var(--sea-deep); stroke-width: 2; }
+  .cycle-path, .stream-path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .cycle-path { stroke: var(--accent); stroke-width: 5; stroke-dasharray: 13 12; }
+  .stream-path { stroke: var(--sea-deep); stroke-width: 17; }
+  .stream-highlight { fill: none; stroke: var(--water-light); stroke-width: 5; stroke-linecap: round; }
+  .rain-drop { transform-box: fill-box; transform-origin: center top; }
+  .water-label { fill: var(--fg); font: 700 22px var(--font-body); }
+  @media (max-width: 900px) {
+    body { overflow: auto; min-height: 100%; grid-template-rows: auto auto auto; }
+    .layout { grid-template-columns: 1fr; grid-template-rows: minmax(300px, 52vh) auto; }
+    #controls { max-height: none; display: grid; grid-template-columns: 1fr 1fr; }
+    .control-heading, .control-note { grid-column: 1 / -1; }
+    #caption { flex-wrap: wrap; }
+    #caption .text { flex-basis: 100%; order: -1; }
+    .topbar { flex-wrap: wrap; }
+    .topbar .spacer { display: none; }
+  }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>神奇的水循環之旅</h1>
+      <p class="goal">明白水在自然界中透過蒸發、凝結、降水和收集不斷循環流動。</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="reset-btn" type="button">↺ 重新開始</button>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  <div class="layout">
+    <main id="stage" class="card" aria-label="演示畫面">
+      <div class="scene-title" id="stage-label">蒸發 (Evaporation)</div>
+      <div class="stage-hint" id="water-visibility">水蒸氣是看不見的氣體</div>
+      <div class="scene-note">示意圖，比例不準確</div>
+      <svg class="scene-svg" id="scene-art" viewBox="0 0 1000 620" role="img" aria-label="海洋、山脈、太陽和雲朵展示水循環">
+        <defs>
+          <linearGradient id="sky-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--sky)"/>
+            <stop offset="1" stop-color="var(--surface)"/>
+          </linearGradient>
+          <linearGradient id="sea-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--sea)"/>
+            <stop offset="1" stop-color="var(--sea-deep)"/>
+          </linearGradient>
+          <radialGradient id="sun-glow">
+            <stop offset="0" stop-color="var(--sun-glow)" stop-opacity=".92"/>
+            <stop offset="1" stop-color="var(--sun-glow)" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="170%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="7"/>
+            <feOffset dy="7"/>
+            <feComponentTransfer><feFuncA type="linear" slope=".18"/></feComponentTransfer>
+            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <marker id="arrow-tip" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+            <path d="M1 1 L10 6 L1 11" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <g id="environment">
+          <rect width="1000" height="620" fill="url(#sky-gradient)"/>
+          <circle id="sun-halo" cx="150" cy="120" r="100" fill="url(#sun-glow)"/>
+          <g id="sun" filter="url(#soft-shadow)">
+            <circle cx="150" cy="120" r="43" fill="var(--sun)"/>
+            <circle cx="137" cy="107" r="12" fill="var(--surface)" opacity=".36"/>
+            <path d="M150 61v-13M150 192v-13M91 120H78M222 120h-13M108 78l-9-9M201 171l-9-9M192 78l9-9M99 171l9-9"
+              fill="none" stroke="var(--sun)" stroke-width="9" stroke-linecap="round"/>
+          </g>
+
+          <!-- 遠山與起伏山坡 -->
+          <g id="hills">
+            <path d="M420 432 Q505 344 587 397 Q680 274 764 375 Q852 264 1000 369 L1000 620 L420 620Z" fill="var(--hill)"/>
+            <path d="M620 379 Q680 274 764 375 Q710 362 682 402Z" fill="var(--surface)" opacity=".82"/>
+            <path d="M764 375 Q852 264 1000 369 Q904 346 868 403Z" fill="var(--surface)" opacity=".72"/>
+            <path d="M365 484 Q495 403 595 444 Q734 386 856 449 Q930 411 1000 440 L1000 620 L365 620Z" fill="var(--hill-dark)" opacity=".72"/>
+            <path d="M420 507 Q515 471 585 496" fill="none" stroke="var(--hill)" stroke-width="14" stroke-linecap="round"/>
+            <path d="M710 464 Q782 438 845 470" fill="none" stroke="var(--hill)" stroke-width="12" stroke-linecap="round"/>
+            <g id="trees" fill="var(--hill-dark)">
+              <path d="M884 450v58h14v-58z"/><circle cx="891" cy="442" r="25"/><circle cx="876" cy="452" r="16"/><circle cx="905" cy="456" r="18"/>
+              <path d="M945 430v69h14v-69z"/><circle cx="952" cy="421" r="29"/><circle cx="934" cy="434" r="18"/><circle cx="972" cy="438" r="17"/>
+              <path d="M785 465v49h12v-49z"/><circle cx="791" cy="458" r="22"/><circle cx="777" cy="468" r="14"/><circle cx="807" cy="470" r="15"/>
+            </g>
+          </g>
+
+          <!-- 海洋 -->
+          <g id="ocean">
+            <path d="M0 411 Q88 395 184 411 Q278 428 372 407 Q432 394 480 412 L480 620 L0 620Z" fill="url(#sea-gradient)"/>
+            <path d="M0 411 Q88 395 184 411 Q278 428 372 407 Q432 394 480 412" fill="none" stroke="var(--water-light)" stroke-width="9" stroke-linecap="round"/>
+            <path d="M30 466q30-12 60 0m32 21q28-11 56 0m-99 41q28-11 56 0m89-62q32-12 64 0m-29 51q25-10 50 0"
+              fill="none" stroke="var(--water-light)" stroke-width="6" stroke-linecap="round" opacity=".75"/>
+            <path d="M12 579q30-12 60 0m53-8q28-11 56 0m93 15q25-10 50 0" fill="none" stroke="var(--water-light)" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+          </g>
+
+          <!-- 河口與地底剖面 -->
+          <path d="M360 542 Q418 530 470 549 L470 620 L360 620Z" fill="var(--soil)" opacity=".9"/>
+          <path d="M423 550 Q442 561 461 557 L466 569 Q440 575 415 561Z" fill="var(--water-light)" opacity=".7"/>
+          <g id="underground-drops" opacity="0">
+            <circle cx="495" cy="566" r="7" fill="var(--water-light)"/>
+            <circle cx="530" cy="584" r="6" fill="var(--water-light)"/>
+            <circle cx="566" cy="570" r="7" fill="var(--water-light)"/>
+          </g>
+        </g>
+
+        <!-- 高空雲層：起始時淡淡可見，凝結時聚攏 -->
+        <g id="clouds" class="cloud-main" opacity=".12" transform="translate(0 0) scale(.78)" filter="url(#soft-shadow)">
+          <g id="cloud-left" transform="translate(435 204)">
+            <ellipse class="cloud-under" cx="66" cy="43" rx="72" ry="28"/>
+            <circle class="cloud-puff" cx="37" cy="33" r="28"/>
+            <circle class="cloud-puff" cx="72" cy="20" r="37"/>
+            <circle class="cloud-puff" cx="108" cy="34" r="28"/>
+            <rect class="cloud-puff" x="35" y="32" width="77" height="27" rx="13"/>
+          </g>
+          <g id="cloud-right" transform="translate(610 192)">
+            <ellipse class="cloud-under" cx="67" cy="46" rx="74" ry="27"/>
+            <circle class="cloud-puff" cx="36" cy="35" r="27"/>
+            <circle class="cloud-puff" cx="72" cy="20" r="36"/>
+            <circle class="cloud-puff" cx="109" cy="35" r="29"/>
+            <rect class="cloud-puff" x="34" y="33" width="80" height="28" rx="14"/>
+          </g>
+        </g>
+
+        <!-- 教學示意：半透明水汽粒子及上升箭頭 -->
+        <g id="vapor-arrows" fill="none" stroke="var(--water-light)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".72">
+          <path d="M265 394 C254 365 265 345 265 326" marker-end="url(#arrow-tip)"/>
+          <path d="M322 398 C312 368 326 346 326 325" marker-end="url(#arrow-tip)"/>
+          <path d="M378 396 C367 368 381 346 381 326" marker-end="url(#arrow-tip)"/>
+        </g>
+        <g id="vapor-particles" opacity=".2">
+          <circle cx="264" cy="401" r="11" fill="var(--surface)" opacity=".72"/>
+          <circle cx="324" cy="405" r="9" fill="var(--surface)" opacity=".72"/>
+          <circle cx="380" cy="399" r="12" fill="var(--surface)" opacity=".72"/>
+          <circle cx="292" cy="420" r="7" fill="var(--surface)" opacity=".68"/>
+          <circle cx="352" cy="418" r="7" fill="var(--surface)" opacity=".68"/>
+        </g>
+
+        <!-- 降水 -->
+        <g id="rain" opacity="0">
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(650 295)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(695 305)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(740 298)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(785 304)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(830 296)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(672 315)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 3-5 0-12Z" transform="translate(763 316)"/>
+          <path class="drop rain-drop" d="M0-12 C-3-5-9 1-9 7a9 9 0 0 0 18 0C9 1 0-5 0-12Z" transform="translate(812 318)"/>
+        </g>
+
+        <!-- 溪流路徑：由山坡匯流入海 -->
+        <path id="stream-path" class="stream-path" d="M850 443 C805 466 786 484 738 484 C683 484 661 510 613 512 C550 515 525 533 474 542 C443 548 413 547 385 535"/>
+        <path id="stream-highlight" class="stream-highlight" d="M850 443 C805 466 786 484 738 484 C683 484 661 510 613 512 C550 515 525 533 474 542 C443 548 413 547 385 535"/>
+        <circle id="flow-bead" cx="850" cy="443" r="11" fill="var(--water-light)" stroke="var(--sea-deep)" stroke-width="4" opacity="0"/>
+
+        <!-- 收集後亮起的循環方向線 -->
+        <path id="cycle-arrow" class="cycle-path" d="M325 375 C340 250 445 142 585 148 C735 152 824 248 804 365" marker-end="url(#arrow-tip)" opacity="0"/>
+      </svg>
+    </main>
+    <aside id="controls" class="card" aria-label="控制面板">
+      <p class="control-heading">水循環階段</p>
+      <!-- Viz.button 控制項會加入此面板 -->
+      <p class="control-note">觀察水如何由海洋升上天空，再回到大海。水汽粒子和箭頭是教學示意。</p>
+    </aside>
+  </div>
+  <footer id="caption" aria-live="polite">
+    <button class="btn" id="prev-btn" type="button">← 上一步</button>
+    <div class="text" id="caption-text"></div>
+    <span id="step-indicator"></span>
+    <button class="btn primary" id="next-btn" type="button">下一步 →</button>
+  </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.gsap || !window.Viz) return;
+
+  gsap.registerPlugin(Draggable, MotionPathPlugin);
+
+  const stageLabels = [
+    '蒸發 (Evaporation)',
+    '凝結 (Condensation)',
+    '降水 (Precipitation)',
+    '收集 (Collection)'
+  ];
+  const captions = [
+    '太陽照射海洋，水受熱變成看不見的水蒸氣上升。',
+    '水蒸氣在高空遇冷，聚集凝結成微小水滴並形成雲。',
+    '雲裡的水滴越來越多、變重，化成雨水降落地面。',
+    '雨水流入小溪與地底，匯集流回大海，重新開始！'
+  ];
+  const duration = function (seconds) {
+    return typeof Viz.duration === 'function' ? Viz.duration(seconds) : seconds;
+  };
+  const reduced = !!Viz.reducedMotion;
+  const stageLabel = document.getElementById('stage-label');
+  const visibilityHint = document.getElementById('water-visibility');
+  const clouds = document.getElementById('clouds');
+  const streamPath = document.getElementById('stream-path');
+  const streamHighlight = document.getElementById('stream-highlight');
+  const rainDrops = document.querySelectorAll('.rain-drop');
+  let currentStep = 0;
+  let transition = null;
+  let rainLoop = null;
+  const totalStreamLength = streamPath.getTotalLength();
+
+  gsap.set('#stream-path, #stream-highlight', {
+    strokeDasharray: totalStreamLength,
+    strokeDashoffset: totalStreamLength
+  });
+  gsap.set('#rain', { opacity: 0 });
+  gsap.set('#flow-bead', { opacity: 0 });
+  gsap.set('#cycle-arrow', { opacity: 0 });
+  gsap.set('#clouds', { opacity: 0.12, scale: 0.78, x: 0, y: 0, transformOrigin: 'center center' });
+  gsap.set('#vapor-particles', { opacity: 0.2, y: 0, scale: 0.85, transformOrigin: 'center bottom' });
+  gsap.set('#vapor-arrows', { opacity: 0.72 });
+  gsap.set('#environment', { opacity: 1 });
+  gsap.set('#sun', { scale: 1, transformOrigin: 'center center' });
+  gsap.set(rainDrops, { y: 0 });
+  gsap.set('#underground-drops', { opacity: 0 });
+
+  const tl = gsap.timeline({ paused: true, defaults: { overwrite: 'auto' } });
+
+  // 第一步：水面受熱，水汽粒子由海面向上飄升並逐漸淡出。
+  tl.addLabel('step1-start', 0);
+  tl.to('#sun', { scale: 1.1, duration: duration(0.8), yoyo: true, repeat: 1, ease: 'sine.inOut' }, 'step1-start');
+  tl.to('#vapor-arrows', { y: -28, opacity: 0.9, duration: duration(1.6), ease: 'power1.out' }, 'step1-start');
+  tl.to('#vapor-particles', {
+    y: -102, opacity: 0.08, scale: 1, duration: duration(1.6),
+    ease: 'power1.out', transformOrigin: 'center bottom'
+  }, 'step1-start');
+  tl.addLabel('step1');
+
+  // 第二步：水汽遇冷，分散的小雲聚攏並有輕柔彈性。
+  tl.addLabel('step2-start');
+  tl.to('#clouds', {
+    opacity: 1, scale: 1, x: 0, y: 0, duration: duration(1.4),
+    ease: reduced ? 'none' : 'elastic.out(1, 0.5)', transformOrigin: 'center center'
+  }, 'step2-start');
+  tl.to('#vapor-arrows', { opacity: 0.2, y: -45, duration: duration(0.8), ease: 'power1.out' }, 'step2-start');
+  tl.to('#vapor-particles', { opacity: 0, duration: duration(0.7), ease: 'power1.out' }, 'step2-start');
+  tl.to('#scene-art rect:first-child', { attr: { fill: 'var(--sky-cool)' }, duration: duration(1.1), ease: 'power1.inOut' }, 'step2-start');
+  tl.addLabel('step2');
+
+  // 第三步：雲變成灰藍色並微微下沉，雨滴連續落向山坡。
+  tl.addLabel('step3-start');
+  tl.to('.cloud-puff', { fill: 'var(--rain-cloud)', duration: duration(0.7), ease: 'power1.inOut' }, 'step3-start');
+  tl.to('.cloud-under', { fill: 'var(--ink-soft)', duration: duration(0.7), ease: 'power1.inOut' }, 'step3-start');
+  tl.to(clouds, { y: 10, rotation: 1, duration: duration(0.45), yoyo: true, repeat: 1, ease: 'sine.inOut' }, 'step3-start');
+  tl.to('#hills', { filter: 'brightness(.78) saturate(1.18)', duration: duration(0.7), ease: 'power1.inOut' }, 'step3-start');
+  tl.to('#rain', { opacity: 1, duration: duration(0.45), ease: 'power1.out' }, 'step3-start');
+  tl.to(rainDrops, { y: 122, duration: duration(1.2), stagger: 0.07, ease: 'none' }, 'step3-start');
+  tl.addLabel('step3');
+
+  // 第四步：溪流沿地勢畫出並注入海洋，循環方向線亮起。
+  tl.addLabel('step4-start');
+  tl.to('#stream-path, #stream-highlight', {
+    strokeDashoffset: 0, duration: duration(2), ease: 'power1.inOut'
+  }, 'step4-start');
+  tl.to('#flow-bead', { opacity: 1, duration: duration(0.2), ease: 'none' }, 'step4-start');
+  tl.to('#flow-bead', {
+    duration: duration(2), ease: 'power1.inOut',
+    motionPath: { path: '#stream-path', align: '#stream-path', alignOrigin: [0.5, 0.5], start: 0, end: 1 }
+  }, 'step4-start');
+  tl.to('#cycle-arrow', { opacity: 1, duration: duration(0.8), ease: 'power1.out' }, 'step4-start');
+  tl.to('#environment', { opacity: 0.84, duration: duration(0.8), ease: 'power1.out' }, 'step4-start');
+  tl.to('#ocean', { opacity: 1, duration: duration(0.5) }, 'step4-start');
+  tl.to('#underground-drops', { opacity: 0.9, duration: duration(0.8), ease: 'power1.out' }, 'step4-start');
+  tl.addLabel('step4');
+
+  const endLabels = ['step1', 'step2', 'step3', 'step4'];
+  const startLabels = ['step1-start', 'step2-start', 'step3-start', 'step4-start'];
+
+  function stopRain() {
+    if (rainLoop) {
+      rainLoop.kill();
+      rainLoop = null;
+    }
+  }
+
+  function startRainLoop() {
+    stopRain();
+    if (reduced) return;
+    gsap.set(rainDrops, { y: 0 });
+    rainLoop = gsap.to(rainDrops, {
+      y: 150, duration: duration(1.2), stagger: 0.13, repeat: -1,
+      ease: 'none',
+      onRepeat: function () { gsap.set(rainDrops, { y: 0 }); }
+    });
+  }
+
+  function setStepDecor(index) {
+    currentStep = index;
+    stageLabel.textContent = stageLabels[index];
+    visibilityHint.textContent = index === 0
+      ? '水蒸氣是看不見的氣體'
+      : index === 1
+        ? '遇冷凝結：小水滴聚成雲'
+        : index === 2
+          ? '雲中的水滴變重，形成降水'
+          : '地表逕流與地下水回到海洋';
+  }
+
+  function animateToStep(index, replay) {
+    stopRain();
+    if (transition) transition.kill();
+    setStepDecor(index);
+    if (index < 2) gsap.set(rainDrops, { y: 0 });
+
+    if (replay) {
+      const from = startLabels[index];
+      const to = endLabels[index];
+      const stepDuration = [1.6, 1.4, 1.2, 2][index];
+      transition = tl.tweenFromTo(from, to, {
+        duration: duration(stepDuration),
+        ease: 'none',
+        onComplete: function () {
+          if (index === 2) startRainLoop();
+        }
+      });
+    } else {
+      transition = tl.tweenTo(endLabels[index], {
+        ease: 'none',
+        onComplete: function () {
+          if (index === 2) startRainLoop();
+        }
+      });
+    }
+  }
+
+  const stepData = captions.map(function (caption, index) {
+    return {
+      caption: caption,
+      show: function () {
+        animateToStep(index, false);
+      }
+    };
+  });
+
+  Viz.steps(stepData);
+  Viz.button('下一步', function () {
+    if (window.Viz && typeof Viz.next === 'function') Viz.next();
+    else document.getElementById('next-btn').click();
+  }, true);
+  Viz.button('上一步', function () {
+    if (window.Viz && typeof Viz.prev === 'function') Viz.prev();
+    else document.getElementById('prev-btn').click();
+  });
+  Viz.button('重播這一步', function () {
+    animateToStep(currentStep, true);
+  });
+
+  if (typeof Viz.onReset === 'function') {
+    Viz.onReset(function () {
+      stopRain();
+      if (transition) transition.kill();
+      tl.pause(0);
+      gsap.set('#stream-path, #stream-highlight', { strokeDashoffset: totalStreamLength });
+      gsap.set('#rain', { opacity: 0 });
+      gsap.set(rainDrops, { y: 0 });
+      gsap.set('#flow-bead', { opacity: 0, clearProps: 'x,y' });
+      gsap.set('#cycle-arrow', { opacity: 0 });
+      gsap.set('#environment', { opacity: 1 });
+      gsap.set('#clouds', { opacity: 0.12, scale: 0.78, x: 0, y: 0, rotation: 0 });
+      gsap.set('#vapor-arrows', { opacity: 0.72, y: 0 });
+      gsap.set('#vapor-particles', { opacity: 0.2, y: 0, scale: 0.85 });
+      gsap.set('#sun', { scale: 1 });
+      gsap.set('.cloud-puff', { fill: 'var(--cloud)' });
+      gsap.set('.cloud-under', { fill: 'var(--cloud-shadow)' });
+      gsap.set('#hills', { clearProps: 'filter' });
+      gsap.set('#underground-drops', { opacity: 0 });
+      gsap.set('#scene-art rect:first-child', { attr: { fill: 'url(#sky-gradient)' } });
+      currentStep = 0;
+      setStepDecor(0);
+    });
+  }
+
+  if (typeof Viz.onResize === 'function') {
+    Viz.onResize(function () {
+      const svg = document.getElementById('scene-art');
+      if (svg) {
+        const rect = svg.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+          svg.setAttribute('data-render-ratio', dpr);
+        }
+      }
+    });
+  }
+
+  setStepDecor(0);
+});
+</script>
+</body>
+</html>

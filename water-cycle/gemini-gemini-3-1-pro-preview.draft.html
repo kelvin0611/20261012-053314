@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>神奇的水循環之旅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&amp;family=Nunito:wght@400;700&amp;family=Noto+Sans+TC:wght@400;700&amp;display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MotionPathPlugin.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F3FF;
+    --fg: #3A2340;
+    --muted: #5B4A6B;
+    --surface: #FFFFFF;
+    --border: #E7E1EE;
+    --accent: #6B3FA0;
+    --accent-fg: #FFFFFF;
+    --ok: #1F7A45;
+    --warn: #C2185B;
+    --palette: #FFD6E0, #C3F0CA, #B8E1FF, #FFE9A8;
+    --radius: 30px;
+    --shadow: 0 12px 0 -4px rgba(58,35,64,.10),0 18px 28px rgba(58,35,64,.14),inset 0 -4px 0 rgba(58,35,64,.06);
+    --font-display: 'Fredoka','Noto Sans TC',sans-serif;
+    --font-body: 'Nunito','Noto Sans TC',sans-serif;
+    --gap: clamp(12px, 2vw, 24px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 22px; line-height: 1.5; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); }
+  .topbar h1 { font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.15; }
+  .topbar .goal { color: var(--muted); margin: 0; font-size: 20px; }
+  .topbar .spacer { flex: 1; }
+  #stage { position: relative; min-height: 0; overflow: hidden; background: var(--surface); }
+  .card { border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  #controls { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: var(--gap); background: var(--surface); }
+  .btn { font: 700 20px var(--font-body); min-height: 56px; padding: 10px 22px; border-radius: var(--radius); border: 2px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; transition: transform 0.1s; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn:active { transform: scale(0.96); }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  label { font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  /* stepper: title, stage + side panel, caption bar with Prev/Next */
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+  .layout { display: grid; grid-template-columns: 1fr minmax(260px, 22vw); gap: var(--gap); padding: 0 calc(var(--gap) * 1.5); min-height: 0; }
+  #caption { display: flex; align-items: center; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.5); font-size: clamp(22px, 2vw, 30px); font-weight: 600; }
+  #caption .text { flex: 1; color: var(--accent); }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } #controls { max-height: 30vh; } }
+
+  /* Custom Scene Styles */
+  #scene-svg { width: 100%; height: 100%; display: block; border-radius: inherit; }
+  .clay-shadow { filter: drop-shadow(0px 12px 10px rgba(58,35,64,0.15)); }
+  .clay-element { transition: fill 0.6s ease-out, opacity 0.6s ease-out; }
+  
+  .step-label {
+    position: absolute;
+    background: var(--surface);
+    padding: 10px 20px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: clamp(20px, 2.5vw, 26px);
+    color: var(--accent);
+    box-shadow: var(--shadow);
+    border: 3px solid var(--accent);
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    pointer-events: none;
+    text-align: center;
+    z-index: 10;
+  }
+  
+  .accuracy-note {
+    position: absolute;
+    bottom: 16px;
+    right: 24px;
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 700;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+</style>
+<script>
+/*
+ * Viz kit — shared classroom helpers injected into every generated visual.
+ * The coder model only writes the scene and calls these; the chrome (caption bar,
+ * Prev/Next, Reset, fullscreen, keyboard) behaves the same on every page.
+ */
+(function () {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resetHandlers = [];
+    let steps = [];
+    let currentStep = 0;
+    let runningLoop = null;
+
+    const byId = (id) => document.getElementById(id);
+
+    const element = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    // Layouts without a caption bar get a floating step navigator inside the stage.
+    const ensureStepBar = () => {
+        if (byId('caption-text')) return;
+        const bar = element('div', 'viz-stepbar');
+        bar.innerHTML = '<button class="btn" id="prev-btn" type="button">←</button>'
+            + '<div class="text" id="caption-text"></div><span id="step-indicator"></span>'
+            + '<button class="btn primary" id="next-btn" type="button">→</button>';
+        byId('stage').append(bar);
+    };
+
+    const showStep = (index, direction) => {
+        if (!steps.length) return;
+        ensureStepBar();
+        currentStep = Math.max(0, Math.min(steps.length - 1, index));
+        const step = steps[currentStep];
+        byId('caption-text').textContent = step.caption || '';
+        byId('step-indicator').textContent = '步驟 ' + (currentStep + 1) + ' / ' + steps.length;
+        byId('prev-btn').disabled = currentStep === 0;
+        byId('next-btn').disabled = currentStep === steps.length - 1;
+        if (typeof step.show === 'function') step.show(direction || 'jump');
+    };
+
+    const reset = () => {
+        resetHandlers.forEach((handler) => handler());
+        showStep(0, 'reset');
+    };
+
+    const toggleFullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+
+    // Layouts without a control panel get a floating dock inside the stage.
+    const controls = () => {
+        if (!byId('controls')) {
+            const dock = element('div', 'viz-dock');
+            dock.id = 'controls';
+            byId('stage').append(dock);
+        }
+        return byId('controls');
+    };
+
+    const field = (labelText) => {
+        const wrapper = element('div', 'viz-field');
+        wrapper.append(element('label', null, labelText));
+        controls().append(wrapper);
+        return wrapper;
+    };
+
+    window.Viz = {
+        reducedMotion,
+
+        /** Seconds to use for an animation: 0 when the viewer prefers reduced motion. */
+        duration: (seconds) => (reducedMotion ? 0 : seconds),
+
+        /** Read a style token, e.g. Viz.color('--accent'). */
+        color: (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+
+        /** The scene container and its current size. */
+        stage: () => byId('stage'),
+        size: () => ({ width: byId('stage').clientWidth, height: byId('stage').clientHeight }),
+        onResize: (handler) => new ResizeObserver(() => handler(window.Viz.size())).observe(byId('stage')),
+
+        /**
+         * Register the teaching steps. Each item: caption (string) and show(direction).
+         * show() must put the scene into that step's complete state so Prev and Reset work.
+         */
+        steps: (list) => {
+            steps = list;
+            showStep(0, 'start');
+        },
+        goTo: (index) => showStep(index, 'jump'),
+        currentStep: () => currentStep,
+
+        /** Run handler when Reset is pressed (before returning to step 1). */
+        onReset: (handler) => resetHandlers.push(handler),
+
+        button: (labelText, onClick, primary) => {
+            const button = element('button', 'btn' + (primary ? ' primary' : ''), labelText);
+            button.type = 'button';
+            button.addEventListener('click', onClick);
+            controls().append(button);
+            return button;
+        },
+
+        slider: (options) => {
+            const wrapper = field(options.label);
+            const input = element('input');
+            const output = element('output', 'viz-value');
+            Object.assign(input, { type: 'range', min: options.min, max: options.max, step: options.step || 1, value: options.value });
+            const render = () => { output.textContent = input.value + (options.unit ? ' ' + options.unit : ''); };
+            input.addEventListener('input', () => { render(); options.onInput && options.onInput(Number(input.value)); });
+            render();
+            wrapper.append(input, output);
+            resetHandlers.push(() => { input.value = options.value; render(); options.onInput && options.onInput(Number(options.value)); });
+            return input;
+        },
+
+        toggle: (labelText, checked, onChange) => {
+            const wrapper = element('label', 'viz-toggle');
+            const input = element('input');
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            input.addEventListener('change', () => onChange && onChange(input.checked));
+            wrapper.append(input, document.createTextNode(' ' + labelText));
+            controls().append(wrapper);
+            resetHandlers.push(() => { input.checked = !!checked; onChange && onChange(input.checked); });
+            return input;
+        },
+
+        /**
+         * Make an element draggable onto drop targets (touch and mouse).
+         * options: targets (elements), onDrop(target, element) returns true to accept; rejected drops spring back.
+         */
+        draggable: (node, options) => {
+            let startX = 0, startY = 0, originX = 0, originY = 0;
+            node.style.touchAction = 'none';
+            node.style.cursor = 'grab';
+            node.addEventListener('pointerdown', (event) => {
+                node.setPointerCapture(event.pointerId);
+                startX = event.clientX; startY = event.clientY;
+                const transform = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                originX = transform.m41; originY = transform.m42;
+                node.style.zIndex = 10;
+                node.style.cursor = 'grabbing';
+            });
+            node.addEventListener('pointermove', (event) => {
+                if (!node.hasPointerCapture(event.pointerId)) return;
+                node.style.transform = 'translate(' + (originX + event.clientX - startX) + 'px,' + (originY + event.clientY - startY) + 'px)';
+            });
+            node.addEventListener('pointerup', (event) => {
+                node.releasePointerCapture(event.pointerId);
+                node.style.cursor = 'grab';
+                const box = node.getBoundingClientRect();
+                const centerX = box.left + box.width / 2, centerY = box.top + box.height / 2;
+                const target = (options.targets || []).find((candidate) => {
+                    const area = candidate.getBoundingClientRect();
+                    return centerX > area.left && centerX < area.right && centerY > area.top && centerY < area.bottom;
+                });
+                const accepted = target && options.onDrop ? options.onDrop(target, node) !== false : false;
+                if (!accepted) {
+                    node.style.transition = reducedMotion ? 'none' : 'transform .35s cubic-bezier(.34,1.56,.64,1)';
+                    node.style.transform = 'translate(' + originX + 'px,' + originY + 'px)';
+                    setTimeout(() => { node.style.transition = ''; }, 400);
+                }
+            });
+        },
+
+        /** Short star burst for a right answer, centred on an element (or the stage). */
+        celebrate: (node) => {
+            const area = (node || byId('stage')).getBoundingClientRect();
+            const colours = (window.Viz.color('--palette') || '#FFD166').split(',').map((colour) => colour.trim());
+            for (let i = 0; i < (reducedMotion ? 0 : 18); i++) {
+                const star = element('span', 'viz-star', '★');
+                star.style.left = area.left + area.width / 2 + 'px';
+                star.style.top = area.top + area.height / 2 + 'px';
+                star.style.color = colours[i % colours.length];
+                document.body.append(star);
+                const angle = (Math.PI * 2 * i) / 18, distance = 80 + Math.random() * 90;
+                star.animate([
+                    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+                    { transform: 'translate(calc(-50% + ' + Math.cos(angle) * distance + 'px), calc(-50% + ' + Math.sin(angle) * distance + 'px)) scale(1.2)', opacity: 0 },
+                ], { duration: 900, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => star.remove();
+            }
+            window.Viz.hint('做得好！', 'ok');
+        },
+
+        /** Gentle message over the stage, e.g. Viz.hint('再試一次') for a wrong answer. */
+        hint: (text, tone) => {
+            const toast = element('div', 'viz-hint' + (tone === 'ok' ? ' ok' : ''), text);
+            byId('stage').append(toast);
+            setTimeout(() => toast.remove(), 1800);
+        },
+
+        /** Update the game HUD (game layout) or a floating badge: Viz.score(3), Viz.round(2, 5). */
+        score: (value) => { const target = byId('hud-score'); if (target) target.textContent = value; },
+        round: (current, total) => { const target = byId('hud-round'); if (target) target.textContent = current + ' / ' + total; },
+
+        /** requestAnimationFrame loop that pauses when the tab is hidden; Space toggles it. */
+        loop: (frame) => {
+            let last = performance.now(), paused = false;
+            const tick = (now) => {
+                if (!paused && !document.hidden) frame(Math.min(0.05, (now - last) / 1000), now / 1000);
+                last = now;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            runningLoop = { pause: () => { paused = true; }, play: () => { paused = false; }, toggle: () => { paused = !paused; }, isPaused: () => paused };
+            return runningLoop;
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const style = element('style');
+        style.textContent = '.viz-field{display:flex;flex-direction:column;gap:6px}.viz-value{font-weight:700;color:var(--accent)}'
+            + '.viz-toggle{display:flex;align-items:center;gap:10px;min-height:56px;font-weight:600}.viz-toggle input{width:28px;height:28px;accent-color:var(--accent)}'
+            + '.viz-star{position:fixed;pointer-events:none;font-size:28px;z-index:50}'
+            + '.viz-hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:var(--surface);color:var(--fg);border:2px solid var(--warn);font-weight:700;box-shadow:var(--shadow);z-index:20}'
+            + '.viz-hint.ok{border-color:var(--ok)}.btn:disabled{opacity:.4;cursor:default}'
+            + '.viz-stepbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:8px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);font-weight:600;z-index:15}'
+            + '.viz-stepbar .text{padding:0 6px}.viz-stepbar #step-indicator{color:var(--muted);white-space:nowrap}'
+            + '.viz-dock{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:10px;max-width:300px;padding:14px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);z-index:15}';
+        document.head.append(style);
+
+    });
+
+    // One delegated listener, so chrome buttons work whether they come from the skeleton or are created later.
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('#prev-btn, #next-btn, #reset-btn, #fullscreen-btn');
+        if (!button) return;
+        if (button.id === 'prev-btn') showStep(currentStep - 1, 'back');
+        if (button.id === 'next-btn') showStep(currentStep + 1, 'forward');
+        if (button.id === 'reset-btn') reset();
+        if (button.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') showStep(currentStep + 1, 'forward');
+        if (event.key === 'ArrowLeft') showStep(currentStep - 1, 'back');
+        if (event.key === 'r' || event.key === 'R') reset();
+        if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+        if (event.key === ' ' && runningLoop) { event.preventDefault(); runningLoop.toggle(); }
+    });
+})();
+
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>神奇的水循環之旅</h1>
+      <p class="goal">明白水在自然界中透過蒸發、凝結、降水和收集不斷循環流動。</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="reset-btn" type="button">↺ 重新開始</button>
+    <button class="btn" id="fullscreen-btn" type="button" aria-label="全螢幕 (F)">全螢幕</button>
+  </header>
+  
+  <div class="layout">
+    <main id="stage" class="card" aria-label="演示畫面">
+      <svg id="scene-svg" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#EAF5FF" id="sky-top"/>
+            <stop offset="100%" stop-color="#FFFFFF" id="sky-bottom"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#6B3FA0" />
+          </marker>
+        </defs>
+
+        <!-- Sky Background -->
+        <rect width="1200" height="700" fill="url(#skyGrad)" id="sky-bg"/>
+
+        <!-- Cycle Arrows (Hidden initially) -->
+        <g id="cycle-arrows" opacity="0" stroke="#6B3FA0" stroke-width="6" stroke-dasharray="12,12" fill="none" opacity="0.3">
+          <path d="M 250 500 Q 200 300 400 180" marker-end="url(#arrowhead)"/>
+          <path d="M 550 150 Q 700 150 850 220" marker-end="url(#arrowhead)"/>
+          <path d="M 950 350 Q 950 500 800 600" marker-end="url(#arrowhead)"/>
+          <path d="M 600 650 Q 400 650 300 600" marker-end="url(#arrowhead)"/>
+        </g>
+
+        <!-- Sun -->
+        <circle cx="180" cy="150" r="75" fill="#FFE9A8" filter="url(#glow)" id="sun" class="clay-element"/>
+
+        <!-- Mountains (Right) -->
+        <g class="clay-shadow">
+          <path d="M 400 750 L 400 450 Q 650 200 950 300 Q 1100 350 1250 250 L 1250 750 Z" fill="#C3F0CA" id="mountain-back" class="clay-element"/>
+          <path d="M 550 750 L 550 500 Q 750 350 1050 450 L 1250 400 L 1250 750 Z" fill="#A4DEAF" id="mountain-front" class="clay-element"/>
+        </g>
+
+        <!-- River (Hidden initially) -->
+        <path d="M 950 350 Q 880 400 800 420 T 600 500 T 450 580 Q 350 630 200 650" fill="none" stroke="#71B9F5" stroke-width="28" stroke-linecap="round" id="river" class="clay-shadow clay-element" stroke-dasharray="1500" stroke-dashoffset="1500"/>
+
+        <!-- Ocean (Left) -->
+        <path d="M -50 750 L -50 500 Q 150 500 350 560 Q 550 600 800 660 L 1250 660 L 1250 750 Z" fill="#B8E1FF" id="ocean" class="clay-shadow clay-element"/>
+
+        <!-- Vapor Particles (Evaporation) -->
+        <g id="vapor-group" opacity="0">
+          <path d="M 200 520 Q 220 480 200 440" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" class="vapor-arrow"/>
+          <path d="M 320 540 Q 340 500 320 460" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" class="vapor-arrow"/>
+          <path d="M 450 560 Q 470 520 450 480" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" class="vapor-arrow"/>
+          <circle cx="180" cy="500" r="8" fill="#FFFFFF" class="vapor-bubble"/>
+          <circle cx="240" cy="530" r="12" fill="#FFFFFF" class="vapor-bubble"/>
+          <circle cx="360" cy="550" r="10" fill="#FFFFFF" class="vapor-bubble"/>
+          <circle cx="480" cy="580" r="14" fill="#FFFFFF" class="vapor-bubble"/>
+        </g>
+
+        <!-- Raindrops (Precipitation) -->
+        <g id="rain-group">
+          <!-- Filled by JS -->
+        </g>
+
+        <!-- Clouds (Condensation) -->
+        <g id="cloud-group" class="clay-shadow" transform-origin="700 200" opacity="0">
+          <!-- Left Cloud -->
+          <path d="M 600 250 A 45 45 0 0 1 620 165 A 60 60 0 0 1 730 150 A 50 50 0 0 1 740 250 Z" fill="#FFFFFF" class="cloud-path clay-element"/>
+          <!-- Right Cloud -->
+          <path d="M 750 230 A 40 40 0 0 1 770 160 A 55 55 0 0 1 870 150 A 45 45 0 0 1 870 230 Z" fill="#FFFFFF" class="cloud-path clay-element"/>
+        </g>
+
+      </svg>
+
+      <!-- HTML Overlays -->
+      <div id="label-1" class="step-label" style="left: 25%; top: 40%;">蒸發<br><span style="font-size: 0.7em;">(Evaporation)</span></div>
+      <div id="label-2" class="step-label" style="left: 60%; top: 12%;">凝結<br><span style="font-size: 0.7em;">(Condensation)</span></div>
+      <div id="label-3" class="step-label" style="left: 80%; top: 40%;">降水<br><span style="font-size: 0.7em;">(Precipitation)</span></div>
+      <div id="label-4" class="step-label" style="left: 45%; top: 75%;">收集<br><span style="font-size: 0.7em;">(Collection)</span></div>
+      
+      <div class="accuracy-note">示意圖（比例不準確）</div>
+    </main>
+    
+    <aside id="controls" class="card" aria-label="控制面板">
+      <!-- Controls injected here -->
+    </aside>
+  </div>
+  
+  <footer id="caption" aria-live="polite">
+    <button class="btn" id="prev-btn" type="button">← 上一步</button>
+    <div class="text" id="caption-text"></div>
+    <span id="step-indicator"></span>
+    <button class="btn primary" id="next-btn" type="button">下一步 →</button>
+  </footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  gsap.registerPlugin(Draggable, MotionPathPlugin);
+
+  // --- Generate Raindrops statically for performance ---
+  const rainGroup = document.getElementById('rain-group');
+  for(let i = 0; i < 20; i++) {
+    const drop = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    drop.setAttribute("x1", 550 + Math.random() * 350);
+    drop.setAttribute("y1", 230 + Math.random() * 50);
+    drop.setAttribute("x2", parseInt(drop.getAttribute("x1")) - 10);
+    drop.setAttribute("y2", parseInt(drop.getAttribute("y1")) + 20);
+    drop.setAttribute("stroke", "#71B9F5");
+    drop.setAttribute("stroke-width", "4");
+    drop.setAttribute("stroke-linecap", "round");
+    drop.classList.add("raindrop");
+    drop.style.opacity = 0;
+    rainGroup.appendChild(drop);
+  }
+
+  // --- Viz Kit Implementation ---
+  const Viz = {
+    currStep: 0,
+    steps: [],
+    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    duration(s) { return this.reducedMotion ? 0 : s; },
+    
+    init(specSteps) {
+      this.steps = specSteps;
+      
+      // Wire built-in UI
+      document.getElementById('prev-btn').addEventListener('click', () => this.goTo(this.currStep - 1));
+      document.getElementById('next-btn').addEventListener('click', () => this.goTo(this.currStep + 1));
+      document.getElementById('reset-btn').addEventListener('click', () => this.goTo(0));
+      document.getElementById('fullscreen-btn').addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else if (document.exitFullscreen) document.exitFullscreen();
+      });
+      
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') this.goTo(this.currStep + 1);
+        if (e.key === 'ArrowLeft') this.goTo(this.currStep - 1);
+        if (e.key === 'f' || e.key === 'F') document.getElementById('fullscreen-btn').click();
+        if (e.key === 'r' || e.key === 'R') this.goTo(0);
+      });
+
+      // Add "Replay" button to controls
+      const controlsPanel = document.getElementById('controls');
+      const replayBtn = document.createElement('button');
+      replayBtn.className = 'btn';
+      replayBtn.innerText = '↺ 重播這一步';
+      replayBtn.onclick = () => this.goTo(this.currStep, true);
+      controlsPanel.appendChild(replayBtn);
+
+      this.goTo(0);
+    },
+
+    goTo(index, forceReplay = false) {
+      if (index < 0 || index >= this.steps.length) return;
+      this.currStep = index;
+      
+      // Update UI
+      document.getElementById('prev-btn').disabled = index === 0;
+      document.getElementById('next-btn').disabled = index === this.steps.length - 1;
+      document.getElementById('step-indicator').innerText = `步驟 ${index + 1} / ${this.steps.length}`;
+      document.getElementById('caption-text').innerText = this.steps[index].caption;
+
+      // Stop all active animations
+      gsap.killTweensOf("*");
+
+      // Dimming logic reset (Step 4 logic)
+      gsap.to('.clay-element', { opacity: 1, duration: this.duration(0.3) });
+
+      // Run step setups sequentially to build state up to current
+      // Then trigger animation for the current step
+      for (let i = 0; i <= index; i++) {
+        const isCurrent = (i === index);
+        this.steps[i].show(isCurrent, forceReplay);
+      }
+    }
+  };
+
+  // --- Step Definitions matching Spec ---
+  const stepsDef = [
+    {
+      caption: "太陽照射海洋，水受熱變成看不見的水蒸氣上升。",
+      show(isCurrent, replay) {
+        // State 0 -> 1 Reset/Init
+        gsap.set('#sun', { scale: 1 });
+        gsap.set('#cloud-group', { scale: 0.3, opacity: 0, y: 0 });
+        gsap.set('.cloud-path', { fill: '#FFFFFF' });
+        gsap.set('.raindrop', { opacity: 0, y: 0 });
+        gsap.set('#mountain-back', { fill: '#C3F0CA' });
+        gsap.set('#mountain-front', { fill: '#A4DEAF' });
+        gsap.set('#river', { strokeDashoffset: 1500 });
+        gsap.set('#sky-top', { stopColor: '#EAF5FF' });
+        gsap.set('#cycle-arrows', { opacity: 0 });
+        
+        // Hide all labels first
+        gsap.set('.step-label', { scale: 0, opacity: 0 });
+
+        if (isCurrent || replay) {
+          // Spec: 貼近海面，透明度 0.2，垂直位置在最底部 -> 歷時 1.6 秒，ease-out 向上飄升並淡出
+          const tl = gsap.timeline();
+          
+          tl.fromTo('#vapor-group', 
+            { y: 50, opacity: 0.2 }, 
+            { y: -100, opacity: 0, duration: Viz.duration(1.6), ease: "power1.out" },
+            0
+          );
+          
+          // Elements inside vapor group
+          gsap.fromTo('.vapor-arrow, .vapor-bubble',
+            { y: 0 },
+            { y: -50, duration: Viz.duration(1.6), ease: "power1.out", stagger: 0.1 },
+            0
+          );
+
+          // Spec: 太陽柔和脈衝放大 1.1 倍
+          gsap.to('#sun', {
+            scale: 1.1,
+            duration: Viz.duration(1.6),
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: 1
+          });
+
+          // Label Pop
+          gsap.to('#label-1', { scale: 1, opacity: 1, duration: Viz.duration(0.6), ease: "back.out(1.7)", delay: Viz.duration(0.3) });
+        } else {
+          // Fast forward state
+          gsap.set('#vapor-group', { opacity: 0 });
+          gsap.set('#sun', { scale: 1 });
+        }
+      }
+    },
+    {
+      caption: "水蒸氣在高空遇冷，聚集凝結成微小水滴並形成雲。",
+      show(isCurrent, replay) {
+        if (isCurrent || replay) {
+          // Spec: 雲朵體積縮小至 30%，透明度 0 -> 歷時 1.4 秒，spring 彈性聚攏膨脹至 100%
+          gsap.fromTo('#cloud-group',
+            { scale: 0.3, opacity: 0 },
+            { scale: 1, opacity: 1, duration: Viz.duration(1.4), ease: "back.out(1.7)" }
+          );
+
+          // Spec: 天空背景色微轉淡青冷色
+          gsap.to('#sky-top', { stopColor: '#D0E8F2', duration: Viz.duration(1.4) });
+
+          // Label Pop
+          gsap.to('#label-2', { scale: 1, opacity: 1, duration: Viz.duration(0.6), ease: "back.out(1.7)", delay: Viz.duration(0.5) });
+        } else {
+          gsap.set('#cloud-group', { scale: 1, opacity: 1 });
+          gsap.set('#sky-top', { stopColor: '#D0E8F2' });
+        }
+      }
+    },
+    {
+      caption: "雲裡的水滴越來越多、變重，化成雨水降落地面。",
+      show(isCurrent, replay) {
+        if (isCurrent || replay) {
+          // Spec: 雲朵顏色變深為灰藍色
+          gsap.to('.cloud-path', { fill: '#A9C4D6', duration: Viz.duration(1.0) });
+          
+          // Spec: 雲朵稍微下沉 10px 並顫動
+          gsap.to('#cloud-group', { y: 10, duration: Viz.duration(0.5), ease: "power1.inOut" });
+          gsap.to('#cloud-group', { x: 3, duration: Viz.duration(0.1), yoyo: true, repeat: 10, ease: "sine.inOut", delay: Viz.duration(0.5) });
+
+          // Spec: 山脈草地轉為深翠綠
+          gsap.to('#mountain-back', { fill: '#94C99A', duration: Viz.duration(1.0) });
+          gsap.to('#mountain-front', { fill: '#79BC87', duration: Viz.duration(1.0) });
+
+          // Spec: 降水雨滴連續循環落下 (歷時 1.2 秒連續循環)
+          gsap.fromTo('.raindrop',
+            { y: 0, opacity: 0 },
+            { 
+              y: 200, 
+              opacity: 1, 
+              duration: Viz.duration(1.2), 
+              ease: "none", 
+              repeat: -1,
+              stagger: { amount: 1.5, from: "random" }
+            }
+          );
+          // Fade out at bottom of drop
+          gsap.to('.raindrop', {
+            opacity: 0,
+            duration: Viz.duration(0.3),
+            delay: Viz.duration(0.9),
+            repeat: -1,
+            repeatDelay: Viz.duration(0.9),
+            ease: "none",
+            stagger: { amount: 1.5, from: "random" }
+          });
+
+          // Label Pop
+          gsap.to('#label-3', { scale: 1, opacity: 1, duration: Viz.duration(0.6), ease: "back.out(1.7)", delay: Viz.duration(0.5) });
+        } else {
+          gsap.set('.cloud-path', { fill: '#A9C4D6' });
+          gsap.set('#cloud-group', { y: 10 });
+          gsap.set('#mountain-back', { fill: '#94C99A' });
+          gsap.set('#mountain-front', { fill: '#79BC87' });
+          // Stop rain if fast-forwarding past it, but since Step 4 keeps it conceptually, 
+          // we let it be handled or just hide if moving to a non-rain state.
+          // For this step sequence, rain continues in bg.
+        }
+      }
+    },
+    {
+      caption: "雨水流入小溪與地底，匯集流回大海，重新開始！",
+      show(isCurrent, replay) {
+        if (isCurrent || replay) {
+          // Spec: 歷時 2.0 秒，ease-in-out 順著曲線路徑畫出溪流
+          gsap.fromTo('#river',
+            { strokeDashoffset: 1500 },
+            { strokeDashoffset: 0, duration: Viz.duration(2.0), ease: "power2.inOut" }
+          );
+
+          // Spec: 全景循環光箭頭亮起
+          gsap.to('#cycle-arrows', { opacity: 1, duration: Viz.duration(1.0), delay: Viz.duration(1.0) });
+          // Make arrows travel slightly
+          gsap.to('#cycle-arrows', { strokeDashoffset: -24, duration: Viz.duration(1.0), ease: "none", repeat: -1 });
+
+          // Spec: 其他非關鍵地貌稍降對比度 (Dimming rule: 35% opacity)
+          gsap.to('#sun, #mountain-back, #cloud-group', { opacity: 0.35, duration: Viz.duration(1.0) });
+          gsap.to('.raindrop', { opacity: 0.2, duration: Viz.duration(1.0) });
+
+          // Label Pop
+          gsap.to('#label-4', { scale: 1, opacity: 1, duration: Viz.duration(0.6), ease: "back.out(1.7)", delay: Viz.duration(1.5) });
+        }
+      }
+    }
+  ];
+
+  Viz.init(stepsDef);
+});
+</script>
+</body>
+</html>

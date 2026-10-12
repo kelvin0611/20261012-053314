@@ -1,0 +1,832 @@
+{
+    "run_id": "20261012-053314",
+    "version": "v3",
+    "created_at": "2026-10-12 05:33:14",
+    "planner": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash"
+    },
+    "coders": [
+        "gemini:gemini-3.1-pro-preview",
+        "openai:gpt-6.1-sol",
+        "openai:gpt-6-luna"
+    ],
+    "cases": [
+        {
+            "id": "water-cycle",
+            "subject": "科學",
+            "level": "小三",
+            "prompt": "水循環：蒸發、凝結、降水、收集，一步一步動畫",
+            "spec": {
+                "teacher_requirements": [
+                    "水循環：蒸發、凝結、降水、收集，一步一步動畫"
+                ],
+                "title": "神奇的水循環之旅",
+                "learning_goal": "明白水在自然界中透過蒸發、凝結、降水和收集不斷循環流動。",
+                "subject": "科學",
+                "audience": "upper_primary",
+                "language": "zh-Hant",
+                "demo_type": "step_animation",
+                "layout": "stepper",
+                "style": "clay",
+                "libraries": [
+                    "gsap"
+                ],
+                "scene": "黏土風橫向自然景觀剖面：左下方為碧藍的大海與河流，右方為青綠起伏的山脈，上方為天空。太陽位於左上方散發微光。畫面中央以大字標籤及動態水珠引導視線。藍色代表液態水、半透明白色代表水蒸氣、灰色厚雲代表飽和水滴群。",
+                "interactions": [
+                    {
+                        "control": "button",
+                        "label": "下一步",
+                        "effect": "依序推進到下一個水循環階段，動畫相應播放，下方字幕與標籤同步更新。"
+                    },
+                    {
+                        "control": "button",
+                        "label": "上一步",
+                        "effect": "退回上一個水循環階段，畫面重現上一階段的狀態。"
+                    },
+                    {
+                        "control": "button",
+                        "label": "重播這一步",
+                        "effect": "重新播放當前步驟的動效，方便全班再次觀察細節。"
+                    }
+                ],
+                "steps": [
+                    {
+                        "caption": "太陽照射海洋，水受熱變成看不見的水蒸氣上升。",
+                        "what_happens": "太陽散發暖黃光芒，海面泛起波紋，多顆半透明小水珠轉化為上升氣流箭頭慢慢飄向空中。"
+                    },
+                    {
+                        "caption": "水蒸氣在高空遇冷，聚集凝結成微小水滴並形成雲。",
+                        "what_happens": "上升的氣流在高空聚攏，天空逐漸膨脹出幾朵柔軟的白色積雲，並伴隨冷卻光效。"
+                    },
+                    {
+                        "caption": "雲裡的水滴越來越多、變重，化成雨水降落地面。",
+                        "what_happens": "雲朵顏色變深為灰藍色，開始向下落下密集雨滴，雨水灑在右側山坡與樹木上。"
+                    },
+                    {
+                        "caption": "雨水流入小溪與地底，匯集流回大海，重新開始！",
+                        "what_happens": "山坡上的水滴匯聚成藍色小溪，順著地勢蜿蜒奔流，最終全數流回大海，形成封閉循環線。"
+                    }
+                ],
+                "motion": [
+                    {
+                        "target": "海面蒸發水汽粒子",
+                        "start_state": "貼近海面，透明度 0.2，垂直位置在最底部",
+                        "trigger": "進入第 1 步（蒸發）或點擊重播",
+                        "transform_origin": "center bottom",
+                        "ending": "歷時 1.6 秒，ease-out 向上飄升並淡出，無回彈",
+                        "surroundings": "太陽柔和脈衝放大 1.1 倍，高空雲層微淡"
+                    },
+                    {
+                        "target": "高空凝結雲朵",
+                        "start_state": "雲朵體積縮小至 30%，透明度 0，散開在天空兩側",
+                        "trigger": "進入第 2 步（凝結）",
+                        "transform_origin": "center center",
+                        "ending": "歷時 1.4 秒，spring 彈性聚攏膨脹至 100%，停下時輕微回彈",
+                        "surroundings": "海面水蒸氣箭頭減弱，天空背景色微轉淡青冷色"
+                    },
+                    {
+                        "target": "降水雨滴群",
+                        "start_state": "隱藏在雲層底部內部，透明度 0",
+                        "trigger": "進入第 3 步（降水）",
+                        "transform_origin": "top center",
+                        "ending": "歷時 1.2 秒連續循環落下，linear 勻速下落，接觸山泥時濺起小水花",
+                        "surroundings": "雲朵稍微下沉 10px 並顫動，山脈草地轉為深翠綠"
+                    },
+                    {
+                        "target": "地表逕流匯集水波",
+                        "start_state": "沿山徑的溪流路徑 stroke-dashoffset 完全隱藏",
+                        "trigger": "進入第 4 步（收集）",
+                        "transform_origin": "top right",
+                        "ending": "歷時 2.0 秒，ease-in-out 順著曲線路徑畫出溪流並注入大海，末端輕微泛起漣漪",
+                        "surroundings": "全景循環光箭頭亮起，其他非關鍵地貌稍降對比度以突顯水流"
+                    }
+                ],
+                "labels": [
+                    "蒸發 (Evaporation)",
+                    "凝結 (Condensation)",
+                    "降水 (Precipitation)",
+                    "收集 (Collection)"
+                ],
+                "accuracy_notes": [
+                    "水蒸氣本身為肉眼不可見的氣體，畫面上以半透明氣泡和上升箭頭為教學示意。",
+                    "雨水收集包括地表逕流及地下水滲透，此處以山溪匯流入海作小學直觀示意。",
+                    "畫面比例非真實地理尺寸，標示「示意圖，比例不準確」。"
+                ]
+            },
+            "planner": {
+                "seconds": 13.3,
+                "usage": {
+                    "prompt_tokens": 2097,
+                    "completion_tokens": 1388,
+                    "cache_write_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "reasoning_tokens": 145
+                }
+            },
+            "error": null,
+            "outputs": [
+                {
+                    "coder": "gemini:gemini-3.1-pro-preview",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 263.4,
+                    "usage": {
+                        "prompt_tokens": 16434,
+                        "completion_tokens": 13613,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 21152
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [
+                            "The right panel card is almost entirely empty (occupying roughly a third of the screen with only a replay button at the top); either populate it with step descriptions/progress list or expand the main illustration viewport to eliminate the large empty space.",
+                            "The '蒸發 (Evaporation)' label card directly overlaps and obscures the sun in the upper-left; reposition the label card so it does not cover the sun."
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4954,
+                        "completion_tokens": 123,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 2268
+                    },
+                    "file": "water-cycle/gemini-gemini-3-1-pro-preview.html",
+                    "draft_file": "water-cycle/gemini-gemini-3-1-pro-preview.draft.html",
+                    "screenshot_file": "water-cycle/gemini-gemini-3-1-pro-preview.png"
+                },
+                {
+                    "coder": "openai:gpt-6.1-sol",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 155.7,
+                    "usage": {
+                        "prompt_tokens": 4434,
+                        "completion_tokens": 11068,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 416
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [],
+                        "repaired": false,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 2477,
+                        "completion_tokens": 16,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 284
+                    },
+                    "file": "water-cycle/openai-gpt-6-1-sol.html",
+                    "screenshot_file": "water-cycle/openai-gpt-6-1-sol.png"
+                },
+                {
+                    "coder": "openai:gpt-6-luna",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 83.4,
+                    "usage": {
+                        "prompt_tokens": 4434,
+                        "completion_tokens": 11239,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 2991
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [],
+                        "repaired": false,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 2477,
+                        "completion_tokens": 16,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 455
+                    },
+                    "file": "water-cycle/openai-gpt-6-luna.html",
+                    "screenshot_file": "water-cycle/openai-gpt-6-luna.png"
+                }
+            ]
+        },
+        {
+            "id": "fractions",
+            "subject": "數學",
+            "level": "小三",
+            "prompt": "用薄餅切件教分數，學生可以揀切幾多件同食咗幾多件",
+            "spec": {
+                "teacher_requirements": [
+                    "用薄餅切件教分數",
+                    "學生可以揀切幾多件同食咗幾多件"
+                ],
+                "title": "美味薄餅學分數",
+                "learning_goal": "明白分數的分母代表等分的總件數，分子代表取出的件數。",
+                "subject": "數學",
+                "audience": "lower_primary",
+                "language": "zh-Hant",
+                "demo_type": "simulation",
+                "layout": "explorer",
+                "style": "clay",
+                "libraries": [
+                    "gsap",
+                    "katex"
+                ],
+                "scene": "畫面中央是一個暖黃色圓形大薄餅（黏土立體質感，上面有番茄、芝士與蘑菇），放在木餐盤上。左側或上方為大按鈕控制區「切開件數（分母：2、3、4、6、8 件）」。右側為動態分數顯示看板（用 KaTeX 清晰顯示大字體分數，分母標註藍色『等分總數』，分子標註橙色『吃了件數』）。被點選吃掉的薄餅切件會移至旁邊的小餐盤上，木餐盤上留下虛線痕跡。",
+                "interactions": [
+                    {
+                        "control": "button",
+                        "label": "切成幾多件（2 / 3 / 4 / 6 / 8）",
+                        "effect": "薄餅表面出現對應數量的等分切線，薄餅重置為完整狀態，分母數字隨之更新。"
+                    },
+                    {
+                        "control": "click",
+                        "label": "點擊薄餅切件（食咗佢）",
+                        "effect": "被點擊的切件平滑滑出薄餅盤並移至旁邊餐盤，分子數值加 1，分數板與讀法（例如『四分之一』）即時更新。"
+                    },
+                    {
+                        "control": "button",
+                        "label": "重新整過一個薄餅",
+                        "effect": "吃掉的切件全部飛回大薄餅並拼合，分子歸零。"
+                    }
+                ],
+                "steps": [],
+                "motion": [
+                    {
+                        "target": "薄餅切割刀光線",
+                        "start_state": "透明度 0，中心延伸的虛線隱藏",
+                        "trigger": "點選切件按鈕切換總件數",
+                        "transform_origin": "薄餅正中心",
+                        "ending": "0.4秒，ease-out，切線從中心向外放射劃出並帶輕微果凍彈性震動",
+                        "surroundings": "薄餅整體輕微縮放一下（scale 1.03 回彈至 1.0）"
+                    },
+                    {
+                        "target": "被點擊吃掉的薄餅切片",
+                        "start_state": "在大薄餅相應扇形位置，微凸起",
+                        "trigger": "學生點擊該切片",
+                        "transform_origin": "扇形尖端",
+                        "ending": "0.5秒，power2.out，沿半徑向外飄浮位移並落入右側空盤子",
+                        "surroundings": "原位置留下半透明白色虛線底影，分數板分子數字彈跳放大"
+                    },
+                    {
+                        "target": "KaTeX 分數看板數值",
+                        "start_state": "原本數字，正常大小",
+                        "trigger": "分子或分母變更",
+                        "transform_origin": "數字中心",
+                        "ending": "0.35秒，back.out(2)，向上微跳並放大 1.2 倍後平穩回落",
+                        "surroundings": "下方中文讀法文字標籤淡入同步更新"
+                    }
+                ],
+                "labels": [
+                    "分數",
+                    "分子",
+                    "分母",
+                    "分數線",
+                    "等分",
+                    "份數"
+                ],
+                "accuracy_notes": [
+                    "薄餅切開的每一件面積必須嚴格相等，以體現『等分』數學概念",
+                    "吃了的件數不能超過總切件數（真分數或等於 1 的假分數範疇，小二至小三程度）",
+                    "分數線下方為分母，上方為分子，顏色需明確區分以加強記憶"
+                ]
+            },
+            "planner": {
+                "seconds": 12.9,
+                "usage": {
+                    "prompt_tokens": 2101,
+                    "completion_tokens": 1028,
+                    "cache_write_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "reasoning_tokens": 339
+                }
+            },
+            "error": null,
+            "outputs": [
+                {
+                    "coder": "gemini:gemini-3.1-pro-preview",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 255.6,
+                    "usage": {
+                        "prompt_tokens": 14779,
+                        "completion_tokens": 12322,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 21851
+                    },
+                    "review": {
+                        "passed": false,
+                        "problems": [
+                            "The fraction display panel on the right has its text cut off: the title at the top ('分數看板') is clipped by the top edge, and the verbal reading at the bottom ('二分之零') is cut off by the card container. Adjust vertical sizing, padding, or flex alignment so all text fits comfortably inside the panel."
+                        ],
+                        "first_problems": [
+                            "Fix KaTeX parse error in the fraction board: KaTeX does not support CSS variables like 'var(--num-color)' in '\\textcolor'. Use hex color codes (e.g. #f97316 for numerator and #3b82f6 for denominator) so the fraction number renders properly.",
+                            "The pizza does not show any slice cut lines despite '2 件' being selected by default. Render distinct dividing lines to show the equal slices on the pizza.",
+                            "Browser error: Uncaught ParseError: KaTeX parse error: Invalid color: 'var(--num-color)' at position 17: …frac{\\textcolor{̲v̲a̲r̲(̲-̲-̲n̲u̲m̲-̲c̲o̲l̲o̲r̲)̲}̲{0}}{\\textcolor…"
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4477,
+                        "completion_tokens": 212,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 890
+                    },
+                    "file": "fractions/gemini-gemini-3-1-pro-preview.html",
+                    "draft_file": "fractions/gemini-gemini-3-1-pro-preview.draft.html",
+                    "screenshot_file": "fractions/gemini-gemini-3-1-pro-preview.png"
+                },
+                {
+                    "coder": "openai:gpt-6.1-sol",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 238.3,
+                    "usage": {
+                        "prompt_tokens": 16045,
+                        "completion_tokens": 16611,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 2820,
+                        "reasoning_tokens": 1020
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [
+                            "The right-hand fraction scoreboard overflows vertically out of the main card: the title '食咗的分數' is cut off and sticking out past the top edge, and the bottom text '仲有 4 件' collides with the footer divider. Adjust padding/spacing or container height in the right column so all content fits comfortably inside the card."
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4406,
+                        "completion_tokens": 109,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 1019
+                    },
+                    "file": "fractions/openai-gpt-6-1-sol.html",
+                    "draft_file": "fractions/openai-gpt-6-1-sol.draft.html",
+                    "screenshot_file": "fractions/openai-gpt-6-1-sol.png"
+                },
+                {
+                    "coder": "openai:gpt-6-luna",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 175.7,
+                    "usage": {
+                        "prompt_tokens": 15799,
+                        "completion_tokens": 21732,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 2820,
+                        "reasoning_tokens": 6311
+                    },
+                    "review": {
+                        "passed": false,
+                        "problems": [
+                            "The pizza and plate in the main canvas are cut off at the bottom edge, hiding the lower half of the pizza slices. Reduce their size or adjust their vertical alignment so the entire circular pizza and plate fit fully within the display card."
+                        ],
+                        "first_problems": [
+                            "The pizza and side plate are severely cut off by the bottom edge of the main card, hiding the lower slices. Scale down or reposition the pizza and plate vertically so the entire circular pizza is fully visible.",
+                            "The fraction on the right displays both numerator and denominator in the same color without labels; color the denominator blue and numerator orange, and add explanatory labels ('吃了件數' / '等分總數') so young students can distinguish them clearly."
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4406,
+                        "completion_tokens": 184,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 1083
+                    },
+                    "file": "fractions/openai-gpt-6-luna.html",
+                    "draft_file": "fractions/openai-gpt-6-luna.draft.html",
+                    "screenshot_file": "fractions/openai-gpt-6-luna.png"
+                }
+            ]
+        },
+        {
+            "id": "solar-system",
+            "subject": "科學",
+            "level": "小五",
+            "prompt": "用 3D 模型展示太陽系八大行星的排列和公轉，可以點擊行星看資料",
+            "spec": {
+                "teacher_requirements": [
+                    "用 3D 模型展示太陽系八大行星的排列和公轉",
+                    "可以點擊行星看資料"
+                ],
+                "title": "探索太陽系八大行星",
+                "learning_goal": "認識太陽系八大行星按距日遠近的排列次序與繞日公轉特點",
+                "subject": "科學",
+                "audience": "upper_primary",
+                "language": "zh-Hant",
+                "demo_type": "model_3d",
+                "layout": "explorer",
+                "style": "night",
+                "libraries": [
+                    "three",
+                    "gsap"
+                ],
+                "scene": "深黑色星空背景帶微弱星塵粒子。中央為發光橘紅色的太陽，外圍有八條半透明同心圓軌道線，依次排列水星、金星、地球、火星、木星、土星（帶光環）、天王星、海王星。右上角浮現半透明資訊面板，左下角設有控制面板，畫面角落標示「行星大小及軌道距離為教學示意，非真實比例」。",
+                "interactions": [
+                    {
+                        "control": "click",
+                        "label": "點選任意行星",
+                        "effect": "鏡頭平滑拉近該行星，行星高亮發光，右側彈出資訊卡顯示中文名稱、距日次序及趣味特點"
+                    },
+                    {
+                        "control": "button",
+                        "label": "暫停／繼續公轉",
+                        "effect": "切換八大行星繞日旋轉動畫的播放與暫停狀態"
+                    },
+                    {
+                        "control": "slider",
+                        "label": "公轉速度：1x",
+                        "effect": "調整行星繞日轉速（0.5x 至 3x），越靠近太陽的行星公轉速度保持相對越快"
+                    },
+                    {
+                        "control": "button",
+                        "label": "全景重設",
+                        "effect": "鏡頭拉回俯瞰全景，關閉當前行星資訊卡，取消行星高亮"
+                    }
+                ],
+                "steps": [],
+                "motion": [
+                    {
+                        "target": "相機視角（Camera）",
+                        "start_state": "距離原點 80 單位的傾斜俯瞰全景視角",
+                        "trigger": "學生點擊特定行星",
+                        "transform_origin": "目標行星中心點",
+                        "ending": "時長 1.2 秒，使用 power2.inOut 平滑推進，無回彈",
+                        "surroundings": "其餘行星與太陽亮度降低至 40%，背景星空微暗"
+                    },
+                    {
+                        "target": "行星資訊卡（Info Card）",
+                        "start_state": "位於畫面右側外部，透明度為 0，縮小至 0.8",
+                        "trigger": "相機完成聚焦推進後立即觸發",
+                        "transform_origin": "卡片中心",
+                        "ending": "時長 0.4 秒，使用 back.out(1.4) 彈出，帶微輕彈",
+                        "surroundings": "選取的行星邊緣產生淡藍色光暈輪廓"
+                    },
+                    {
+                        "target": "行星公轉群組（Orbit Mesh）",
+                        "start_state": "沿各自行道勻速繞 Y 軸旋轉",
+                        "trigger": "點擊「暫停／繼續公轉」按鈕",
+                        "transform_origin": "太陽中心點 (0, 0, 0)",
+                        "ending": "時長 0.3 秒減速停止或恢復勻速，使用 power1.out",
+                        "surroundings": "軌道線亮度短暫閃爍一下以示狀態切換"
+                    }
+                ],
+                "labels": [
+                    "太陽 (Sun)",
+                    "水星 (Mercury)",
+                    "金星 (Venus)",
+                    "地球 (Earth)",
+                    "火星 (Mars)",
+                    "木星 (Jupiter)",
+                    "土星 (Saturn)",
+                    "天王星 (Uranus)",
+                    "海王星 (Neptune)",
+                    "公轉軌道 (Orbit)"
+                ],
+                "accuracy_notes": [
+                    "必須標明「示意圖：天體大小與軌道間距並非真實比例」。",
+                    "八大行星排列順序必須嚴格正確：水星、金星、地球、火星、木星、土星、天王星、海王星。",
+                    "公轉相對快慢需符合克卜勒定律趨勢（內圈行星公轉週期短、速度快；外圈行星公轉週期長、速度慢）。"
+                ]
+            },
+            "planner": {
+                "seconds": 13.5,
+                "usage": {
+                    "prompt_tokens": 2103,
+                    "completion_tokens": 1117,
+                    "cache_write_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "reasoning_tokens": 230
+                }
+            },
+            "error": null,
+            "outputs": [
+                {
+                    "coder": "gemini:gemini-3.1-pro-preview",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 192,
+                    "usage": {
+                        "prompt_tokens": 16478,
+                        "completion_tokens": 15420,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 9246
+                    },
+                    "review": {
+                        "passed": false,
+                        "problems": [
+                            "The default camera view is zoomed in too close: Saturn is cut off at the bottom edge, Neptune is cut off at the bottom-right corner, and Uranus is completely off-screen. Zoom out / adjust the camera distance so all eight planetary orbits fit entirely within the 3D viewport.",
+                            "The central Sun is missing a clear label and visual distinction, causing the labels for Mercury (水星) and Venus (金星) to clutter directly over the center body. Clarify the Sun in the center with a glowing sun texture/color and proper label, and ensure inner planet orbits are spaced clearly."
+                        ],
+                        "first_problems": [
+                            "The 3D solar system scene is completely blank/black due to a JavaScript syntax error ('Invalid or unexpected token'); fix the syntax error so Three.js initializes and renders the Sun, 8 planets, and orbital paths.",
+                            "Browser error: Invalid or unexpected token"
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4514,
+                        "completion_tokens": 214,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 812
+                    },
+                    "file": "solar-system/gemini-gemini-3-1-pro-preview.html",
+                    "draft_file": "solar-system/gemini-gemini-3-1-pro-preview.draft.html",
+                    "screenshot_file": "solar-system/gemini-gemini-3-1-pro-preview.png"
+                },
+                {
+                    "coder": "openai:gpt-6.1-sol",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 312.2,
+                    "usage": {
+                        "prompt_tokens": 17604,
+                        "completion_tokens": 20309,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 2858,
+                        "reasoning_tokens": 1327
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [
+                            "The '太陽 (Sun)' label overlaps directly with the '水星' badge in the center of the solar system; adjust label offsets or camera angle so they do not collide.",
+                            "Earth and Neptune lack name labels while the other planets have floating badges; ensure all eight planets have visible labels."
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4510,
+                        "completion_tokens": 99,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 3503
+                    },
+                    "file": "solar-system/openai-gpt-6-1-sol.html",
+                    "draft_file": "solar-system/openai-gpt-6-1-sol.draft.html",
+                    "screenshot_file": "solar-system/openai-gpt-6-1-sol.png"
+                },
+                {
+                    "coder": "openai:gpt-6-luna",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 174.7,
+                    "usage": {
+                        "prompt_tokens": 17465,
+                        "completion_tokens": 21465,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 2858,
+                        "reasoning_tokens": 3078
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [
+                            "The 3D orbit lines specified in the design and shown in the legend ('公轉軌道 (Orbit)') are completely missing from the scene due to a JavaScript error (THREE.BufferGeometry position attribute containing NaN values). Fix the orbit geometry generation so that the 8 planetary orbits render properly.",
+                            "Browser error: THREE.BufferGeometry.computeBoundingSphere(): Computed radius is NaN. The \"position\" attribute is likely to have NaN values. [object BufferGeometry]"
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 4541,
+                        "completion_tokens": 98,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 1467
+                    },
+                    "file": "solar-system/openai-gpt-6-luna.html",
+                    "draft_file": "solar-system/openai-gpt-6-luna.draft.html",
+                    "screenshot_file": "solar-system/openai-gpt-6-luna.png"
+                }
+            ]
+        },
+        {
+            "id": "detailed-brief",
+            "subject": "人文",
+            "level": "小四",
+            "prompt": "請製作一個「認識香港的天氣」互動頁面（小四人文科）。\n版面：左邊是香港的插畫（山、海、高樓、樹），右邊是天氣資料卡。不要分步驟。\n顏色：以天藍色和白色為主。\n功能：\n1. 上方有 4 個大按鈕：晴天、下雨、颱風、寒冷。\n2. 按下後左邊插畫的天空、雲和樹會即時變化：下雨有雨點，颱風時樹會搖動、雲很快飄過，寒冷時人物穿上外套。\n3. 右邊卡片顯示該天氣的 3 個特徵、3 個安全提示，以及天文台可能發出的信號或警告名稱。\n4. 頁面底部有一句提示：「出門前記得看天文台預報！」",
+            "spec": {
+                "teacher_requirements": [
+                    "左邊是香港的插畫（山、海、高樓、樹），右邊是天氣資料卡。不要分步驟。",
+                    "以天藍色和白色為主。",
+                    "上方有 4 個大按鈕：晴天、下雨、颱風、寒冷。",
+                    "按下後左邊插畫的天空、雲和樹會即時變化：下雨有雨點，颱風時樹會搖動、雲很快飄過，寒冷時人物穿上外套。",
+                    "右邊卡片顯示該天氣的 3 個特徵、3 個安全提示，以及天文台可能發出的信號或警告名稱。",
+                    "頁面底部有一句提示：「出門前記得看天文台預報！」"
+                ],
+                "title": "認識香港的天氣",
+                "learning_goal": "學生能辨識香港四種常見天氣的特徵、安全應對方法及相關天文台警告信號",
+                "subject": "人文",
+                "audience": "upper_primary",
+                "language": "zh-Hant",
+                "demo_type": "simulation",
+                "layout": "split",
+                "style": "clay",
+                "libraries": [
+                    "gsap"
+                ],
+                "scene": "主色調為天藍與白色，頂部是四個天氣切換按鈕。左半部是香港代表性地貌插畫（獅子山剪影、維港海水、中環高樓群、前景綠樹與一個小學生角色），視覺焦點隨天氣變化切換天空與環境色調；右半部為黏土風格資訊卡，清晰分成『天氣特徵』、『安全守則』與『天文台警告信號』三欄，底部橫幅固定顯示提醒標語。",
+                "interactions": [
+                    {
+                        "control": "button",
+                        "label": "晴天",
+                        "effect": "天空變蔚藍明亮，太陽升起發光；樹木靜止；人物穿短袖校服；右側卡片更新為晴天高溫特徵、防曬防中暑安全提示，並列出『酷熱天氣警告』。"
+                    },
+                    {
+                        "control": "button",
+                        "label": "下雨",
+                        "effect": "天空轉灰藍，烏雲密布，密集的斜向雨點粒子落下，海面泛起漣漪；人物撐起雨傘；右側卡片更新為降雨特徵、帶備雨具防滑提示，並列出『暴雨警告信號（黃色、紅色、黑色）』。"
+                    },
+                    {
+                        "control": "button",
+                        "label": "颱風",
+                        "effect": "天空轉深鉛灰色，深色烏雲快速狂奔，樹木劇烈向側傾斜晃動，海浪湧起；人物留在室內窗邊；右側卡片更新為狂風巨浪特徵、遠離岸邊與留在室內提示，並列出『熱帶氣旋警告信號（一號、三號、八號、九號、十號）』。"
+                    },
+                    {
+                        "control": "button",
+                        "label": "寒冷",
+                        "effect": "天空呈現淡粉藍清冷色，飄起微弱冷空氣霧氣流動；人物換上厚外套和圍巾，呵出白氣；右側卡片更新為低溫乾燥特徵、保暖與關顧長者提示，並列出『寒冷天氣警告』。"
+                    }
+                ],
+                "steps": [],
+                "motion": [
+                    {
+                        "target": "樹木與枝葉",
+                        "start_state": "筆直垂直立於前景，輕微自然微風呼吸動態",
+                        "trigger": "點擊『颱風』按鈕",
+                        "transform_origin": "bottom center",
+                        "ending": "0.3秒劇烈向右傾斜25度，隨後以 elastic.out 來回激烈擺動循環",
+                        "surroundings": "天空背景快速轉暗，高樓燈光微亮，烏雲以平常3倍速橫越畫面"
+                    },
+                    {
+                        "target": "雨滴粒子群",
+                        "start_state": "透明度0，隱藏在雲層上方",
+                        "trigger": "點擊『下雨』按鈕",
+                        "transform_origin": "top center",
+                        "ending": "0.4秒淡入至透明度0.85，以連續勻速向右下方45度連續落下",
+                        "surroundings": "太陽淡出消失，天空由天藍色經0.5秒漸變為灰藍色"
+                    },
+                    {
+                        "target": "插畫人物服裝外觀",
+                        "start_state": "短袖校服裝束",
+                        "trigger": "點擊『寒冷』按鈕",
+                        "transform_origin": "center center",
+                        "ending": "0.4秒以 scale 0.9 到 1.0 彈跳替換成厚外套與紅圍巾圖層，附微小呼氣粒子",
+                        "surroundings": "左側整個香港插畫色溫降為冷藍調，右側資訊卡隨平滑位移換頁"
+                    }
+                ],
+                "labels": [
+                    "晴天",
+                    "下雨",
+                    "颱風",
+                    "寒冷",
+                    "香港天文台",
+                    "酷熱天氣警告",
+                    "暴雨警告信號（黃／紅／黑）",
+                    "熱帶氣旋警告信號（一號／三號／八號或以上）",
+                    "寒冷天氣警告",
+                    "天氣特徵",
+                    "安全提示",
+                    "出門前記得看天文台預報！"
+                ],
+                "accuracy_notes": [
+                    "香港天文台的暴雨警告分為黃色、紅色、黑色三級，依雨量每小時超過30、50、70毫米劃分。",
+                    "香港熱帶氣旋警告信號為一號、三號、八號、九號、十號（無二、四、五、六、七號）。",
+                    "寒冷天氣警告通常在市區氣溫預測降至12度或以下時發出；酷熱天氣警告通常在氣溫高達33度或以上時發出。",
+                    "左側香港插畫為象徵性示意圖，建築物與山海比例非實景地圖比例。"
+                ]
+            },
+            "planner": {
+                "seconds": 21.6,
+                "usage": {
+                    "prompt_tokens": 2272,
+                    "completion_tokens": 1506,
+                    "cache_write_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "reasoning_tokens": 0
+                }
+            },
+            "error": null,
+            "outputs": [
+                {
+                    "coder": "gemini:gemini-3.1-pro-preview",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 388.3,
+                    "usage": {
+                        "prompt_tokens": 20625,
+                        "completion_tokens": 21903,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 29861
+                    },
+                    "review": {
+                        "passed": false,
+                        "problems": [
+                            "The right weather info card is missing required content: only 2 safety tips are shown instead of 3, and the Observatory warning signals/names (天文台警告信號，例如「酷熱天氣警告」) are completely missing. Adjust padding/font size and add the 3rd safety tip along with the Observatory warning signal section."
+                        ],
+                        "first_problems": [
+                            "The right-hand weather information card is missing most of the required content: it only shows 2 weather characteristics and completely cuts off the 3rd characteristic, all 3 safety tips (安全提示), and the Observatory warning signal names (天文台信號/警告). Adjust the layout (e.g., place the 4 buttons across the top horizontally) to allow the full weather card details to fit visibly on screen."
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 5588,
+                        "completion_tokens": 199,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 1426
+                    },
+                    "file": "detailed-brief/gemini-gemini-3-1-pro-preview.html",
+                    "draft_file": "detailed-brief/gemini-gemini-3-1-pro-preview.draft.html",
+                    "screenshot_file": "detailed-brief/gemini-gemini-3-1-pro-preview.png"
+                },
+                {
+                    "coder": "openai:gpt-6.1-sol",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 280.2,
+                    "usage": {
+                        "prompt_tokens": 18907,
+                        "completion_tokens": 19932,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 2801,
+                        "reasoning_tokens": 795
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [
+                            "The text under '香港天文台 | 可能發出的警告' on the right information card ('通常在氣溫高達 33°C 或以上時發出；晴天不一...') is cut off at the bottom edge of the card and overlaps with the animation control bar below it. Reduce vertical spacing or expand the card height so the full description is visible without clipping."
+                        ],
+                        "repaired": true,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 5588,
+                        "completion_tokens": 102,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 1274
+                    },
+                    "file": "detailed-brief/openai-gpt-6-1-sol.html",
+                    "draft_file": "detailed-brief/openai-gpt-6-1-sol.draft.html",
+                    "screenshot_file": "detailed-brief/openai-gpt-6-1-sol.png"
+                },
+                {
+                    "coder": "openai:gpt-6-luna",
+                    "error": null,
+                    "issues": [],
+                    "seconds": 84.3,
+                    "usage": {
+                        "prompt_tokens": 4653,
+                        "completion_tokens": 11761,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 2064
+                    },
+                    "review": {
+                        "passed": true,
+                        "problems": [],
+                        "first_problems": [],
+                        "repaired": false,
+                        "skipped": null
+                    },
+                    "review_usage": {
+                        "prompt_tokens": 2794,
+                        "completion_tokens": 16,
+                        "cache_write_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                        "reasoning_tokens": 743
+                    },
+                    "file": "detailed-brief/openai-gpt-6-luna.html",
+                    "screenshot_file": "detailed-brief/openai-gpt-6-luna.png"
+                }
+            ]
+        }
+    ]
+}
